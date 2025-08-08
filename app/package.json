@@ -1,0 +1,16 @@
+{
+  "name": "simple-webapp",
+  "version": "1.0.0",
+  "description": "Basic Node.js web application",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
