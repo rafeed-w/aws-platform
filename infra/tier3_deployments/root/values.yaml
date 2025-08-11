@@ -4,11 +4,11 @@ applications:
     path: infra/tier3_deployments/webapp
 
 systemtools:
-  - name: cert-manager
-    chartRepo: https://charts.jetstack.io
-    chart: cert-manager
-    version: v1.16.2
-  
+  # - name: cert-manager
+  #   chartRepo: https://charts.jetstack.io
+  #   chart: cert-manager
+  #   version: v1.16.2
+
   - name: nginx
     chartRepo: https://kubernetes.github.io/ingress-nginx
     chart: ingress-nginx
