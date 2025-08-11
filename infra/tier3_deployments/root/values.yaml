@@ -1,0 +1,8 @@
+applications:
+  - name: thrive-webapp
+    namespace: thrive-webapp
+    path: infra/tier3_deployments/app
+
+systemtools:
+  - cert-manager
+  - nginx
