@@ -1,8 +1,15 @@
 applications:
   - name: thrive-webapp
     namespace: thrive-webapp
-    path: infra/tier3_deployments/app
+    path: infra/tier3_deployments/webapp
 
 systemtools:
-  - cert-manager
-  - nginx
+  - name: cert-manager
+    chartRepo: https://charts.jetstack.io
+    chart: cert-manager
+    version: v1.16.2
+  
+  - name: nginx
+    chartRepo: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    version: 4.11.3
