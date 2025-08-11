@@ -328,10 +328,13 @@ resource "helm_release" "cluster_autoscaler" {
         "kubernetes.io/os" = "linux"
       }
 
-      serviceAccount = {
-        create = true
-        annotations = {
-          "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
+      rbac = {
+        serviceAccount = {
+          create = true
+          name = "cluster-autoscaler"
+          annotations = {
+            "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
+          }
         }
       }
 
