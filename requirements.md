@@ -1,7 +1,5 @@
 ---
-
 - Objective -
-
 ---
 
 Your task is to provision infrastructure and deploy a basic web application in a
@@ -28,9 +26,9 @@ scalable and observable way. You will use tools commonly seen in DevOps workflow
 - Containerize it using Docker.
 - Deploy using Kubernetes or Docker Compose, depending on what you set up.
 - Include a CI/CD pipeline (GitHub Actions, GitLab CI, CircleCI, etc.) that:
-- Builds Docker images
-- Pushes to a container registry (Docker Hub, ECR, etc.)
-- Deploys to the cluster
+  - Builds Docker images
+  - Pushes to a container registry (Docker Hub, ECR, etc.)
+  - Deploys to the cluster
 
 3. Monitoring & Logging
 
