@@ -1,0 +1,51 @@
+global:
+  domain: argocd.thrive-test.local
+
+controller:
+  replicas: 1
+
+server:
+  replicas: 1
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+
+  # Enable insecure mode for easier setup (can be secured later with TLS)
+  extraArgs:
+    - --insecure
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  enabled: true
+  replicas: 1
+
+notifications:
+  enabled: false
+
+dex:
+  enabled: false
+
+configs:
+  params:
+    server.insecure: true
+
+  cm:
+    # URL will be auto-updated by ArgoCD to use the actual LoadBalancer hostname
+
+    # Git repositories (public repo - no auth needed)
+    repositories: |
+      - type: git
+        url: https://github.com/rafeed-w/aws-platform
+
+    # NOTE: For private repos later, you'll need to:
+    # 1. Create a GitHub PAT with 'repo' scope
+    # 2. Add it as a Kubernetes secret: kubectl create secret generic github-token --from-literal=password=YOUR_PAT_TOKEN -n argocd
+    # 3. Reference the secret in repository config instead of hardcoding
+
+  # Default admin password (change this in production)
+  secret:
+    argocdServerAdminPassword: '$2a$10$yGT7V/vbE0ekkZHiaHvOhOsoh0EaJ7EXhgG8WHEzP1vG1x2s5MY.W' # password: admin
