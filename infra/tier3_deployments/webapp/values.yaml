@@ -17,10 +17,10 @@ ingress:
   className: 'nginx'
   annotations: {}
   hosts:
-    - host: webapp.thrive.local
-      paths:
+    - paths:
         - path: /
           pathType: Prefix
+      # host: webapp.thrive.com
   tls: []
 
 resources:
