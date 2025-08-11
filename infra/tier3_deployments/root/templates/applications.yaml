@@ -29,19 +29,25 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ . }}
+  name: {{ .name }}
   namespace: systemtool-argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://github.com/rafeed-w/aws-platform
-    targetRevision: HEAD
-    path: infra/tier3_deployments/{{ . }}
+  sources:
+    - repoURL: {{ .chartRepo }}
+      chart: {{ .chart }}
+      targetRevision: {{ .version }}
+      helm:
+        valueFiles:
+          - $values/infra/tier3_deployments/{{ .name }}/{{ .name }}.yaml
+    - repoURL: https://github.com/rafeed-w/aws-platform
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: systemtool-{{ . }}
+    namespace: systemtool-{{ .name }}
   syncPolicy:
     automated:
       prune: true
