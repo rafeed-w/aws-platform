@@ -77,3 +77,14 @@ output "application_namespaces" {
     "thrive-webapp"
   ]
 }
+
+# CI/CD Infrastructure outputs
+output "ecr_repository_url" {
+  description = "ECR repository URL for all applications"
+  value       = aws_ecr_repository.applications.repository_url
+}
+
+output "github_actions_role_arn" {
+  description = "GitHub Actions IAM role ARN for CI/CD"
+  value       = aws_iam_role.github_actions.arn
+}

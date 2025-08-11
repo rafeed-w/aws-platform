@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: nginx
-  tag: '1.25'
-  pullPolicy: IfNotPresent
+  repository: '433058264968.dkr.ecr.us-east-2.amazonaws.com/thrive-test-applications'
+  tag: 'latest'
+  pullPolicy: Always
 
 nameOverride: ''
 fullnameOverride: ''
@@ -20,7 +20,7 @@ ingress:
     - paths:
         - path: /
           pathType: Prefix
-      # host: webapp.thrive.com
+      # host: webapp.thrive.com # Replace with your actual domain + DNS setup
   tls: []
 
 resources:
