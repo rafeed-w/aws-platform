@@ -1,0 +1,56 @@
+crds:
+  enabled: true
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - cert-manager
+        topologyKey: kubernetes.io/hostname
+
+webhook:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+cainjector:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+global:
+  logLevel: 2
+
+startupapicheck:
+  enabled: true
