@@ -1,8 +1,9 @@
 variable "workspaces" {
   description = "List of workspaces to create"
   type = list(object({
-    name        = string
-    description = string
+    name                = string
+    description         = string
+    global_remote_state = bool
   }))
 }
 

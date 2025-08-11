@@ -57,3 +57,12 @@ resource "tfe_workspace" "workspaces" {
   description  = each.value.description
   organization = data.tfe_organization.org.name
 }
+
+# Configure workspace settings including remote state access
+resource "tfe_workspace_settings" "workspace_settings" {
+  for_each     = { for ws in var.workspaces : ws.name => ws }
+  workspace_id = tfe_workspace.workspaces[each.key].id
+  
+  # Enable global remote state for workspaces that need it
+  global_remote_state = each.value.global_remote_state
+}
