@@ -14,6 +14,18 @@ terraform {
       source  = "hashicorp/tfe"
       version = "~> 0.68.2"
     }
+    hcp = {
+      source  = "hashicorp/hcp"
+      version = "~> 0.84"
+    }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -21,36 +33,171 @@ provider "tfe" {
   token = var.tfc_token
 }
 
-data "tfe_organization" "org" {
-  name = "aws-platform" # Change to your TFC organization name
+provider "hcp" {
+  client_id     = var.hcp_client_id
+  client_secret = var.hcp_client_secret
 }
 
-resource "tfe_variable_set" "aws_credentials" {
-  name         = "aws-credentials"
-  description  = "AWS credentials for all workspaces"
+provider "github" {
+  token = var.github_token
+}
+
+# HCP Vault Cluster (Free Tier)
+resource "hcp_hvn" "main" {
+  hvn_id         = "aws-platform-hvn"
+  cloud_provider = "aws"
+  region         = "us-east-2"
+  cidr_block     = "172.25.16.0/20"
+}
+
+resource "hcp_vault_cluster" "main" {
+  cluster_id      = "aws-platform-vault"
+  hvn_id          = hcp_hvn.main.hvn_id
+  tier            = "dev" # Free tier
+  public_endpoint = true
+}
+
+# Create admin token for Vault cluster
+resource "hcp_vault_cluster_admin_token" "main" {
+  cluster_id = hcp_vault_cluster.main.cluster_id
+}
+
+# Configure Vault provider using HCP cluster
+provider "vault" {
+  address = hcp_vault_cluster.main.vault_public_endpoint_url
+  token   = hcp_vault_cluster_admin_token.main.token
+}
+
+# Vault KV engine
+resource "vault_mount" "kv" {
+  path        = "secret"
+  type        = "kv"
+  options     = { version = "2" }
+  description = "Platform secrets"
+
+  depends_on = [hcp_vault_cluster.main]
+}
+
+# Store all platform secrets in Vault
+resource "vault_generic_secret" "aws_credentials" {
+  path = "secret/aws"
+
+  data_json = jsonencode({
+    access_key_id     = var.aws_access_key_id
+    secret_access_key = var.aws_secret_access_key
+    account_id        = var.aws_account_id
+  })
+
+  depends_on = [vault_mount.kv]
+}
+
+resource "vault_generic_secret" "platform_config" {
+  path = "secret/platform"
+
+  data_json = jsonencode({
+    user_email   = var.user_email
+    github_owner = var.github_owner
+    github_repo  = var.github_repo
+    github_token = var.github_token
+    organization = "aws-platform"
+    environment  = "test"
+  })
+
+  depends_on = [vault_mount.kv]
+}
+
+resource "vault_generic_secret" "terraform_cloud" {
+  path = "secret/terraform"
+
+  data_json = jsonencode({
+    token        = var.tfc_token
+    organization = "aws-platform"
+  })
+
+  depends_on = [vault_mount.kv]
+}
+
+# Create GitHub Environments
+resource "github_repository_environment" "terraform_plan" {
+  environment = "terraform-plan"
+  repository  = var.github_repo
+}
+
+resource "github_repository_environment" "terraform_apply" {
+  environment = "terraform-apply"
+  repository  = var.github_repo
+}
+
+# Add required approver for terraform-apply environment
+resource "github_repository_environment" "terraform_apply_protection" {
+  environment = github_repository_environment.terraform_apply.environment
+  repository  = var.github_repo
+
+  reviewers {
+    users = [data.github_user.current.id]
+  }
+}
+
+data "github_user" "current" {
+  username = var.github_owner
+}
+
+# Add Vault secrets as repository secrets (simpler than environment secrets)
+resource "github_actions_secret" "vault_url" {
+  repository      = var.github_repo
+  secret_name     = "VAULT_URL"
+  plaintext_value = hcp_vault_cluster.main.vault_public_endpoint_url
+}
+
+resource "github_actions_secret" "vault_token" {
+  repository      = var.github_repo
+  secret_name     = "VAULT_TOKEN"
+  plaintext_value = hcp_vault_cluster_admin_token.main.token
+}
+
+# Store GitHub token for ArgoCD (private repos)
+resource "vault_generic_secret" "argocd_git" {
+  path = "secret/argocd"
+
+  data_json = jsonencode({
+    github_token = var.github_token
+    repo_url     = "https://github.com/${var.github_owner}/${var.github_repo}"
+    github_owner = var.github_owner
+  })
+
+  depends_on = [vault_mount.kv]
+}
+
+# Existing TFC workspace creation (enhanced)
+data "tfe_organization" "org" {
+  name = "aws-platform"
+}
+
+resource "tfe_variable_set" "vault_credentials" {
+  name         = "vault-credentials"
+  description  = "Vault credentials for all workspaces"
   organization = data.tfe_organization.org.name
   global       = true
 }
 
-resource "tfe_variable" "aws_access_key_id" {
-  key             = "AWS_ACCESS_KEY_ID"
-  value           = var.aws_access_key_id
+resource "tfe_variable" "vault_addr" {
+  key             = "VAULT_ADDR"
+  value           = hcp_vault_cluster.main.vault_public_endpoint_url
   category        = "env"
-  description     = "AWS Access Key ID"
-  variable_set_id = tfe_variable_set.aws_credentials.id
+  description     = "Vault cluster address"
+  variable_set_id = tfe_variable_set.vault_credentials.id
+}
+
+resource "tfe_variable" "vault_token" {
+  key             = "VAULT_TOKEN"
+  value           = hcp_vault_cluster_admin_token.main.token
+  category        = "env"
+  description     = "Vault access token"
+  variable_set_id = tfe_variable_set.vault_credentials.id
   sensitive       = true
 }
 
-resource "tfe_variable" "aws_secret_access_key" {
-  key             = "AWS_SECRET_ACCESS_KEY"
-  value           = var.aws_secret_access_key
-  category        = "env"
-  description     = "AWS Secret Access Key"
-  variable_set_id = tfe_variable_set.aws_credentials.id
-  sensitive       = true
-}
-
-# Create workspaces
+# Create workspaces with Vault integration
 resource "tfe_workspace" "workspaces" {
   for_each     = { for ws in var.workspaces : ws.name => ws }
   name         = each.value.name
@@ -58,11 +205,9 @@ resource "tfe_workspace" "workspaces" {
   organization = data.tfe_organization.org.name
 }
 
-# Configure workspace settings including remote state access
 resource "tfe_workspace_settings" "workspace_settings" {
   for_each     = { for ws in var.workspaces : ws.name => ws }
   workspace_id = tfe_workspace.workspaces[each.key].id
-  
-  # Enable global remote state for workspaces that need it
+
   global_remote_state = each.value.global_remote_state
 }

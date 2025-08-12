@@ -22,11 +22,27 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.31"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 4.0"
+    }
   }
 }
 
 provider "aws" {
   region = "us-east-2"
+}
+
+# vault provider configured via environment variables from tier0
+provider "vault" {}
+
+# read platform config from vault
+data "vault_generic_secret" "platform_config" {
+  path = "secret/platform"
+}
+
+data "vault_generic_secret" "argocd_git" {
+  path = "secret/argocd"
 }
 
 # Reference tier2 compute resources via remote state
@@ -88,7 +104,7 @@ resource "kubernetes_namespace" "argocd" {
   }
 }
 
-# Install ArgoCD using Helm
+# Install ArgoCD using Helm with dynamic configuration
 resource "helm_release" "argocd" {
   name       = "argocd"
   repository = "https://argoproj.github.io/argo-helm"
@@ -97,17 +113,94 @@ resource "helm_release" "argocd" {
   namespace  = kubernetes_namespace.argocd.metadata[0].name
 
   values = [
-    file("${path.module}/argocd/argocd.yaml")
+    yamlencode({
+      controller = {
+        replicas = 1
+      }
+
+      server = {
+        replicas = 1
+        service = {
+          type = "LoadBalancer"
+          annotations = {
+            "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
+            "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
+          }
+        }
+        extraArgs = ["--insecure"]
+      }
+
+      repoServer = {
+        replicas = 1
+      }
+
+      applicationSet = {
+        enabled = true
+        replicas = 1
+      }
+
+      notifications = {
+        enabled = false
+      }
+
+      dex = {
+        enabled = false
+      }
+
+      configs = {
+        params = {
+          "server.insecure" = true
+        }
+
+        cm = {
+          # credential template for private github repos
+          "credentialTemplates.github" = yamlencode({
+            url = "https://github.com/${data.vault_generic_secret.argocd_git.data["github_owner"]}"
+            username = "oauth2"
+            password = data.vault_generic_secret.argocd_git.data["github_token"]
+          })
+
+          # repositories for git and helm
+          repositories = yamlencode([
+            {
+              type = "git"
+              url  = data.vault_generic_secret.argocd_git.data["repo_url"]
+            },
+            {
+              type = "helm"
+              name = "ecr-helm"
+              url  = "oci://${aws_ecr_repository.applications.repository_url}"
+              enableOCI = true
+            }
+          ])
+        }
+
+        secret = {
+          argocdServerAdminPassword = "$2a$10$yGT7V/vbE0ekkZHiaHvOhOsoh0EaJ7EXhgG8WHEzP1vG1x2s5MY.W"
+        }
+      }
+    })
   ]
 
   depends_on = [kubernetes_namespace.argocd]
 }
 
-# Install root app using Helm
+# Install root app using Helm with dynamic ECR injection
 resource "helm_release" "root_app" {
-  name       = "root-app"
-  chart      = "./root"
-  namespace  = "systemtool-argocd"
+  name      = "root-app"
+  chart     = "./root"
+  namespace = "systemtool-argocd"
+
+  # pass ECR repository URL to ArgoCD apps
+  set {
+    name  = "global.ecrRepository"
+    value = aws_ecr_repository.applications.repository_url
+  }
+
+  set {
+    name  = "global.userEmail"
+    value = data.vault_generic_secret.platform_config.data["user_email"]
+  }
 
   depends_on = [helm_release.argocd]
 }
@@ -196,7 +289,7 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:rafeed-w/aws-platform:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${data.vault_generic_secret.platform_config.data["github_owner"]}/${data.vault_generic_secret.platform_config.data["github_repo"]}:*"
           }
         }
       }
