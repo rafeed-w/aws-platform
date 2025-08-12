@@ -117,6 +117,46 @@ resource "vault_generic_secret" "terraform_cloud" {
   depends_on = [vault_mount.kv]
 }
 
+# Configure JWT auth method for GitHub Actions OIDC
+resource "vault_jwt_auth_backend" "github_actions" {
+  path        = "jwt"
+  description = "GitHub Actions JWT authentication"
+
+  oidc_discovery_url = "https://token.actions.githubusercontent.com"
+  bound_issuer       = "https://token.actions.githubusercontent.com"
+
+  depends_on = [hcp_vault_cluster.main]
+}
+
+# Create role for GitHub Actions
+resource "vault_jwt_auth_backend_role" "github_actions_role" {
+  backend   = vault_jwt_auth_backend.github_actions.path
+  role_name = "github-actions-role"
+
+  token_policies = ["github-actions-policy"]
+
+  bound_audiences = ["https://github.com/${var.github_owner}"]
+  bound_claims = {
+    repository = "${var.github_owner}/${var.github_repo}"
+  }
+
+  user_claim    = "actor"
+  role_type     = "jwt"
+  token_ttl     = 3600
+  token_max_ttl = 3600
+}
+
+# Policy for GitHub Actions to access secrets
+resource "vault_policy" "github_actions" {
+  name = "github-actions-policy"
+
+  policy = <<EOT
+path "secret/*" {
+  capabilities = ["read"]
+}
+EOT
+}
+
 # Create GitHub Environments
 resource "github_repository_environment" "terraform_plan" {
   environment = "terraform-plan"
@@ -189,6 +229,33 @@ resource "tfe_variable" "vault_token" {
   description     = "Vault access token"
   variable_set_id = tfe_variable_set.vault_credentials.id
   sensitive       = true
+}
+
+# Add AWS credentials as environment variables (global to all workspaces)
+resource "tfe_variable" "aws_access_key_id" {
+  key             = "AWS_ACCESS_KEY_ID"
+  value           = var.aws_access_key_id
+  category        = "env"
+  description     = "AWS Access Key ID"
+  variable_set_id = tfe_variable_set.vault_credentials.id
+  sensitive       = true
+}
+
+resource "tfe_variable" "aws_secret_access_key" {
+  key             = "AWS_SECRET_ACCESS_KEY"
+  value           = var.aws_secret_access_key
+  category        = "env"
+  description     = "AWS Secret Access Key"
+  variable_set_id = tfe_variable_set.vault_credentials.id
+  sensitive       = true
+}
+
+resource "tfe_variable" "aws_region" {
+  key             = "AWS_DEFAULT_REGION"
+  value           = "us-east-2"
+  category        = "env"
+  description     = "AWS Default Region"
+  variable_set_id = tfe_variable_set.vault_credentials.id
 }
 
 # Create workspaces with Vault integration
