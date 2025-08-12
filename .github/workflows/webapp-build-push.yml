@@ -98,20 +98,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Import AWS Account ID from Vault
-        uses: hashicorp/vault-action@v2
-        id: secrets
-        with:
-          url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: false
-          secrets: |
-            secret/data/aws account_id | AWS_ACCOUNT_ID
+      - name: Install Vault CLI
+        run: |
+          curl -fsSL https://releases.hashicorp.com/vault/1.15.2/vault_1.15.2_linux_amd64.zip -o vault.zip
+          unzip vault.zip
+          sudo mv vault /usr/local/bin/
+          vault version
+
+      - name: Get AWS Account ID from Vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_URL }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          # Get AWS account ID
+          AWS_ACCOUNT=$(vault kv get -field=account_id secret/aws)
+          echo "AWS_ACCOUNT_ID=$AWS_ACCOUNT" >> $GITHUB_ENV
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ steps.secrets.outputs.AWS_ACCOUNT_ID }}:role/thrive-test-github-actions-role
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/thrive-test-github-actions-role
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-WebApp-Build
 

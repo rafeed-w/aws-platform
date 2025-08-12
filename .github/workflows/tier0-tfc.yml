@@ -30,20 +30,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Import Secrets from Vault
-        uses: hashicorp/vault-action@v2
-        id: secrets
-        with:
-          url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
-          secrets: |
-            secret/data/terraform token | TF_API_TOKEN ;
-            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
-            secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
-            secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
-            secret/data/terraform token | TF_VAR_tfc_token ;
-            secret/data/terraform organization | TF_VAR_tfc_organization
+      - name: Install Vault CLI
+        run: |
+          curl -fsSL https://releases.hashicorp.com/vault/1.15.2/vault_1.15.2_linux_amd64.zip -o vault.zip
+          unzip vault.zip
+          sudo mv vault /usr/local/bin/
+          vault version
+
+      - name: Get Secrets from Vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_URL }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          # Get terraform credentials
+          TF_TOKEN=$(vault kv get -field=token secret/terraform)
+          TF_ORG=$(vault kv get -field=organization secret/terraform)
+          
+          # Get AWS credentials 
+          AWS_ACCESS_KEY=$(vault kv get -field=access_key_id secret/aws)
+          AWS_SECRET_KEY=$(vault kv get -field=secret_access_key secret/aws)
+          
+          # Export as environment variables for subsequent steps
+          echo "TF_API_TOKEN=$TF_TOKEN" >> $GITHUB_ENV
+          echo "TF_CLOUD_ORGANIZATION=$TF_ORG" >> $GITHUB_ENV
+          echo "TF_VAR_aws_access_key_id=$AWS_ACCESS_KEY" >> $GITHUB_ENV
+          echo "TF_VAR_aws_secret_access_key=$AWS_SECRET_KEY" >> $GITHUB_ENV
+          echo "TF_VAR_tfc_token=$TF_TOKEN" >> $GITHUB_ENV
+          echo "TF_VAR_tfc_organization=$TF_ORG" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -127,20 +140,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Import Secrets from Vault
-        uses: hashicorp/vault-action@v2
-        id: secrets
-        with:
-          url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
-          secrets: |
-            secret/data/terraform token | TF_API_TOKEN ;
-            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
-            secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
-            secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
-            secret/data/terraform token | TF_VAR_tfc_token ;
-            secret/data/terraform organization | TF_VAR_tfc_organization
+      - name: Install Vault CLI
+        run: |
+          curl -fsSL https://releases.hashicorp.com/vault/1.15.2/vault_1.15.2_linux_amd64.zip -o vault.zip
+          unzip vault.zip
+          sudo mv vault /usr/local/bin/
+          vault version
+
+      - name: Get Secrets from Vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_URL }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+        run: |
+          # Get terraform credentials
+          TF_TOKEN=$(vault kv get -field=token secret/terraform)
+          TF_ORG=$(vault kv get -field=organization secret/terraform)
+          
+          # Get AWS credentials 
+          AWS_ACCESS_KEY=$(vault kv get -field=access_key_id secret/aws)
+          AWS_SECRET_KEY=$(vault kv get -field=secret_access_key secret/aws)
+          
+          # Export as environment variables for subsequent steps
+          echo "TF_API_TOKEN=$TF_TOKEN" >> $GITHUB_ENV
+          echo "TF_CLOUD_ORGANIZATION=$TF_ORG" >> $GITHUB_ENV
+          echo "TF_VAR_aws_access_key_id=$AWS_ACCESS_KEY" >> $GITHUB_ENV
+          echo "TF_VAR_aws_secret_access_key=$AWS_SECRET_KEY" >> $GITHUB_ENV
+          echo "TF_VAR_tfc_token=$TF_TOKEN" >> $GITHUB_ENV
+          echo "TF_VAR_tfc_organization=$TF_ORG" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
