@@ -13,5 +13,10 @@ workspaces = [
     name                = "tier3_deployments"
     description         = "ArgoCD, Helm deployments, and Kubernetes applications"
     global_remote_state = true
+  },
+  {
+    name                = "tier4_monitoring"
+    description         = "CloudWatch monitoring, Container Insights, and alerting"
+    global_remote_state = false
   }
 ]
