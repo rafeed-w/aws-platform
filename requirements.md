@@ -56,9 +56,9 @@ scalable and observable way. You will use tools commonly seen in DevOps workflow
 - Dockerfile(s)
 - Kubernetes manifests or Docker Compose
 - Diagrams or notes on:
-- System architecture
-- Any tradeoffs or decisions you made
-- Replication instructions
+  - System architecture
+  - Any tradeoffs or decisions you made
+  - Replication instructions
 - step by step instructions on how to clone the github repository and deploy it
   start to finish on another AWS account
   Use a brand new, free AWS account and resources. Avoid any additional billing.
