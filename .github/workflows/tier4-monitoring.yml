@@ -12,8 +12,6 @@ on:
   workflow_dispatch:
 
 env:
-  TF_CLOUD_ORGANIZATION: "aws-platform"
-  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
   WORKSPACE_NAME: "tier4_monitoring"
   WORKSPACE_DIR: "infra/tier4_monitoring"
 
@@ -31,6 +29,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        id: secrets
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          exportEnv: true
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -113,6 +122,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        id: secrets
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          exportEnv: true
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

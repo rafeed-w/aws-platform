@@ -17,7 +17,8 @@ blueGreen:
 replicaCount: 2
 
 image:
-  repository: '433058264968.dkr.ecr.us-east-2.amazonaws.com/thrive-test-applications'
+  # ECR URL injected via ArgoCD global values from terraform
+  repository: '{{ .Values.global.ecrRepository }}'
   tag: 'latest'
   pullPolicy: Always
 

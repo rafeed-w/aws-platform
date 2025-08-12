@@ -95,12 +95,12 @@ resource "vault_generic_secret" "platform_config" {
   path = "secret/platform"
 
   data_json = jsonencode({
-    user_email   = var.user_email
-    github_owner = var.github_owner
-    github_repo  = var.github_repo
-    github_token = var.github_token
-    organization = "aws-platform"
-    environment  = "test"
+    user_email       = var.user_email
+    github_owner     = var.github_owner
+    github_repo      = var.github_repo
+    github_token     = var.github_token
+    tfc_organization = var.tfc_organization
+    environment      = "test"
   })
 
   depends_on = [vault_mount.kv]
@@ -111,7 +111,7 @@ resource "vault_generic_secret" "terraform_cloud" {
 
   data_json = jsonencode({
     token        = var.tfc_token
-    organization = "aws-platform"
+    organization = var.tfc_organization
   })
 
   depends_on = [vault_mount.kv]
@@ -125,12 +125,6 @@ resource "github_repository_environment" "terraform_plan" {
 
 resource "github_repository_environment" "terraform_apply" {
   environment = "terraform-apply"
-  repository  = var.github_repo
-}
-
-# Add required approver for terraform-apply environment
-resource "github_repository_environment" "terraform_apply_protection" {
-  environment = github_repository_environment.terraform_apply.environment
   repository  = var.github_repo
 
   reviewers {
@@ -170,7 +164,7 @@ resource "vault_generic_secret" "argocd_git" {
 
 # Existing TFC workspace creation (enhanced)
 data "tfe_organization" "org" {
-  name = "aws-platform"
+  name = var.tfc_organization
 }
 
 resource "tfe_variable_set" "vault_credentials" {

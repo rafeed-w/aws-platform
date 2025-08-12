@@ -12,13 +12,8 @@ on:
   workflow_dispatch:
 
 env:
-  TF_CLOUD_ORGANIZATION: 'aws-platform'
-  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
   WORKSPACE_NAME: 'tier0_tfc'
   WORKSPACE_DIR: 'infra/tier0_tfc'
-  TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  TF_VAR_tfc_token: ${{ secrets.TF_API_TOKEN }}
 
 jobs:
   terraform-plan:
@@ -34,6 +29,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        id: secrets
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          exportEnv: true
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
+            secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
+            secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
+            secret/data/terraform token | TF_VAR_tfc_token ;
+            secret/data/terraform organization | TF_VAR_tfc_organization
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -116,6 +126,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        id: secrets
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          exportEnv: true
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
+            secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
+            secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
+            secret/data/terraform token | TF_VAR_tfc_token ;
+            secret/data/terraform organization | TF_VAR_tfc_organization
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
