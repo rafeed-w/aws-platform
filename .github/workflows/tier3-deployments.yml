@@ -25,6 +25,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -32,11 +33,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role  # We'll need to create this role in Vault
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION
@@ -118,6 +119,9 @@ jobs:
     needs: terraform-plan
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.terraform-plan.outputs.has_changes == 'true'
     environment: terraform-apply
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -125,11 +129,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role  # We'll need to create this role in Vault
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION

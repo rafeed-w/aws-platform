@@ -3,12 +3,13 @@ name: Destroy All Tiers
 on:
   workflow_dispatch:
 
-env:
-
 jobs:
   destroy-tier4-monitoring:
     name: Destroy Tier4 Monitoring
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -16,11 +17,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION
@@ -44,6 +45,9 @@ jobs:
     name: Destroy Tier3 Deployments
     runs-on: ubuntu-latest
     needs: destroy-tier4-monitoring
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -51,11 +55,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION
@@ -79,6 +83,9 @@ jobs:
     name: Destroy Tier2 Compute
     runs-on: ubuntu-latest
     needs: destroy-tier3-deployments
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -86,11 +93,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION
@@ -114,6 +121,9 @@ jobs:
     name: Destroy Tier1 Network
     runs-on: ubuntu-latest
     needs: destroy-tier2-compute
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
     
     steps:
       - name: Checkout
@@ -121,11 +131,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION

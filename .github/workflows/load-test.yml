@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       webapp_url: ${{ steps.get_url.outputs.webapp_url }}
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
 
     steps:
       - name: Checkout
@@ -32,11 +35,11 @@ jobs:
 
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
-        id: secrets
         with:
           url: ${{ secrets.VAULT_URL }}
-          token: ${{ secrets.VAULT_TOKEN }}
-          exportEnv: true
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION

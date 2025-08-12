@@ -13,6 +13,11 @@ spec:
     repoURL: https://github.com/rafeed-w/aws-platform
     targetRevision: HEAD
     path: {{ .path }}
+    helm:
+      values: |
+        global:
+          ecrRepository: {{ $.Values.global.ecrRepository }}
+          userEmail: {{ $.Values.global.userEmail }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .namespace }}
