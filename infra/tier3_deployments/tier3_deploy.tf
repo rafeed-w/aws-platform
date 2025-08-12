@@ -209,6 +209,7 @@ resource "helm_release" "root_app" {
 resource "aws_ecr_repository" "applications" {
   name                 = "${local.company}-${local.environment}-applications"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true  # Allow deletion even with images
 
   image_scanning_configuration {
     scan_on_push = true

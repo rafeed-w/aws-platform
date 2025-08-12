@@ -1,0 +1,156 @@
+name: Apply All Tiers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply-tier1-network:
+    name: Apply Tier1 Network
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ env.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./infra/tier1_network
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra/tier1_network
+
+  apply-tier2-compute:
+    name: Apply Tier2 Compute
+    runs-on: ubuntu-latest
+    needs: apply-tier1-network
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ env.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./infra/tier2_compute
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra/tier2_compute
+
+  apply-tier3-deployments:
+    name: Apply Tier3 Deployments
+    runs-on: ubuntu-latest
+    needs: apply-tier2-compute
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ env.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./infra/tier3_deployments
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra/tier3_deployments
+
+  apply-tier4-monitoring:
+    name: Apply Tier4 Monitoring
+    runs-on: ubuntu-latest
+    needs: apply-tier3-deployments
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ env.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./infra/tier4_monitoring
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra/tier4_monitoring
