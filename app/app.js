@@ -20,6 +20,26 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/load-test', (req, res) => {
+  // CPU-intensive operation for load testing
+  const iterations = parseInt(req.query.iterations) || 1000000;
+  let result = 0;
+  
+  const start = Date.now();
+  for (let i = 0; i < iterations; i++) {
+    result += Math.sqrt(i) * Math.random();
+  }
+  const duration = Date.now() - start;
+  
+  res.json({
+    message: 'Load test endpoint',
+    iterations: iterations,
+    result: Math.floor(result),
+    duration: `${duration}ms`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running at http://0.0.0.0:${PORT}`);
 });

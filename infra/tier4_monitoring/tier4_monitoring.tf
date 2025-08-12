@@ -161,7 +161,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   namespace           = "ContainerInsights"
   period              = "300"
   statistic           = "Average"
-  threshold           = "80"
+  threshold           = "60"
   alarm_description   = "This metric monitors EKS node CPU utilization"
   alarm_actions       = [aws_sns_topic.cloudwatch_alerts.arn]
 
@@ -180,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
   namespace           = "ContainerInsights"
   period              = "300"
   statistic           = "Average"
-  threshold           = "80"
+  threshold           = "60"
   alarm_description   = "This metric monitors EKS node memory utilization"
   alarm_actions       = [aws_sns_topic.cloudwatch_alerts.arn]
 
