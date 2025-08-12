@@ -10,14 +10,13 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/rafeed-w/aws-platform
+    repoURL: {{ $.Values.global.githubRepoUrl }}
     targetRevision: HEAD
     path: {{ .path }}
     helm:
       values: |
-        global:
-          ecrRepository: {{ $.Values.global.ecrRepository }}
-          userEmail: {{ $.Values.global.userEmail }}
+        image:
+          repository: {{ $.Values.global.ecrRepository }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .namespace }}
@@ -47,7 +46,7 @@ spec:
       helm:
         valueFiles:
           - $values/infra/tier3_deployments/{{ .name }}/{{ .name }}.yaml
-    - repoURL: https://github.com/rafeed-w/aws-platform
+    - repoURL: {{ $.Values.global.githubRepoUrl }}
       targetRevision: HEAD
       ref: values
   destination:

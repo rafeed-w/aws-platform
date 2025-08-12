@@ -69,6 +69,12 @@ variable "aws_account_id" {
   type        = string
 }
 
+variable "aws_region" {
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-east-2"
+}
+
 output "vault_token" {
   description = "Vault admin token"
   value       = hcp_vault_cluster_admin_token.main.token

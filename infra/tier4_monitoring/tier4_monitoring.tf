@@ -2,6 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
+    # Change to your TFC organization name if different
     organization = "aws-platform"
 
     workspaces {
@@ -18,11 +19,19 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.31"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 3.0"
+    }
   }
 }
 
+data "vault_generic_secret" "platform_config" {
+  path = "secret/platform"
+}
+
 provider "aws" {
-  region = "us-east-2"
+  region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
 # Reference tier2 compute resources via remote state
@@ -30,7 +39,7 @@ data "terraform_remote_state" "compute" {
   backend = "remote"
 
   config = {
-    organization = "aws-platform"
+    organization = data.vault_generic_secret.platform_config.data["tfc_organization"]
     workspaces = {
       name = "tier2_compute"
     }
@@ -149,7 +158,7 @@ resource "aws_sns_topic" "cloudwatch_alerts" {
 resource "aws_sns_topic_subscription" "email_alerts" {
   topic_arn = aws_sns_topic.cloudwatch_alerts.arn
   protocol  = "email"
-  endpoint  = "perch.snarks.2p@icloud.com" # Update this email address
+  endpoint  = data.vault_generic_secret.platform_config.data["user_email"]
 }
 
 # CloudWatch Alarms for EKS Cluster
@@ -251,7 +260,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Average"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Webapp CPU (% of Pod Limit)"
           yAxis = {
             left = {
@@ -274,7 +283,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Average"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Webapp Memory (% of Pod Limit)"
           yAxis = {
             left = {
@@ -297,7 +306,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Sum"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Webapp Requests/sec"
         }
       },
@@ -316,7 +325,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Average"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Webapp Network Traffic (Bytes/sec)"
         }
       },
@@ -333,7 +342,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Average"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Webapp Running Pods"
         }
       },
@@ -351,7 +360,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Average"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Cluster Ready Nodes"
         }
       },
@@ -369,7 +378,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Maximum"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Node Resource Utilization (%)"
           yAxis = {
             left = {
@@ -392,7 +401,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           ]
           period = 300
           stat   = "Maximum"
-          region = "us-east-2"
+          region = data.vault_generic_secret.platform_config.data["aws_region"]
           title  = "Node Filesystem Usage (%)"
           yAxis = {
             left = {

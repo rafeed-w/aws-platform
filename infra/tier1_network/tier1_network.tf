@@ -2,6 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
+    # Change to your TFC organization name if different
     organization = "aws-platform"
 
     workspaces {
@@ -14,11 +15,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "6.8.0"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 3.0"
+    }
   }
 }
 
+data "vault_generic_secret" "platform_config" {
+  path = "secret/platform"
+}
+
 provider "aws" {
-  region = "us-east-2"
+  region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
 # TODO: Add later - ECR repository, S3 bucket, VPC Flow Logs 
@@ -50,7 +59,7 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public_1a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-2a"
+  availability_zone       = "${data.vault_generic_secret.platform_config.data["aws_region"]}a"
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
@@ -62,7 +71,7 @@ resource "aws_subnet" "public_1a" {
 resource "aws_subnet" "public_1b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-east-2b"
+  availability_zone       = "${data.vault_generic_secret.platform_config.data["aws_region"]}b"
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
@@ -75,7 +84,7 @@ resource "aws_subnet" "public_1b" {
 resource "aws_subnet" "private_1a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.10.0/24"
-  availability_zone = "us-east-2a"
+  availability_zone = "${data.vault_generic_secret.platform_config.data["aws_region"]}a"
 
   tags = merge(local.common_tags, {
     Name = "${local.company}-${local.environment}-private-1a"
@@ -86,7 +95,7 @@ resource "aws_subnet" "private_1a" {
 resource "aws_subnet" "private_1b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.11.0/24"
-  availability_zone = "us-east-2b"
+  availability_zone = "${data.vault_generic_secret.platform_config.data["aws_region"]}b"
 
   tags = merge(local.common_tags, {
     Name = "${local.company}-${local.environment}-private-1b"

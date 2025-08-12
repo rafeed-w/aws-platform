@@ -46,7 +46,7 @@ provider "github" {
 resource "hcp_hvn" "main" {
   hvn_id         = "aws-platform-hvn"
   cloud_provider = "aws"
-  region         = "us-east-2"
+  region         = var.aws_region
   cidr_block     = "172.25.16.0/20"
 }
 
@@ -100,6 +100,7 @@ resource "vault_generic_secret" "platform_config" {
     github_repo      = var.github_repo
     github_token     = var.github_token
     tfc_organization = var.tfc_organization
+    aws_region       = var.aws_region
     environment      = "test"
   })
 
@@ -112,6 +113,17 @@ resource "vault_generic_secret" "terraform_cloud" {
   data_json = jsonencode({
     token        = var.tfc_token
     organization = var.tfc_organization
+  })
+
+  depends_on = [vault_mount.kv]
+}
+
+resource "vault_generic_secret" "hcp_credentials" {
+  path = "secret/hcp"
+
+  data_json = jsonencode({
+    client_id     = var.hcp_client_id
+    client_secret = var.hcp_client_secret
   })
 
   depends_on = [vault_mount.kv]
@@ -252,7 +264,7 @@ resource "tfe_variable" "aws_secret_access_key" {
 
 resource "tfe_variable" "aws_region" {
   key             = "AWS_DEFAULT_REGION"
-  value           = "us-east-2"
+  value           = var.aws_region
   category        = "env"
   description     = "AWS Default Region"
   variable_set_id = tfe_variable_set.vault_credentials.id

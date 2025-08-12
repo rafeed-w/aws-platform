@@ -11,7 +11,7 @@ output "monitoring_info" {
       https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#container-insights:performance/EKS:Cluster?~(query~(controls~(CW*3a*3aEKS.cluster~(~'${local.cluster_name})))~context~(orchestrationService~'eks))
     
     Alerts:
-      Email: perch.snarks.2p@icloud.com (update this in tier4_monitoring.tf)
+      Email: (configured via SNS subscription)
       SNS Topic: ${aws_sns_topic.cloudwatch_alerts.name}
       
     Metrics Available:

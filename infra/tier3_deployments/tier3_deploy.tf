@@ -2,6 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
+    # Change to your TFC organization name if different
     organization = "aws-platform"
 
     workspaces {
@@ -30,7 +31,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2"
+  region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
 # vault provider configured via environment variables from tier0
@@ -50,7 +51,7 @@ data "terraform_remote_state" "compute" {
   backend = "remote"
 
   config = {
-    organization = "aws-platform"
+    organization = data.vault_generic_secret.platform_config.data["tfc_organization"]
     workspaces = {
       name = "tier2_compute"
     }
@@ -113,54 +114,18 @@ resource "helm_release" "argocd" {
   namespace  = kubernetes_namespace.argocd.metadata[0].name
 
   values = [
+    file("${path.module}/argocd/argocd.yaml"),
     yamlencode({
-      controller = {
-        replicas = 1
-      }
-
-      server = {
-        replicas = 1
-        service = {
-          type = "LoadBalancer"
-          annotations = {
-            "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
-            "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
-          }
-        }
-        extraArgs = ["--insecure"]
-      }
-
-      repoServer = {
-        replicas = 1
-      }
-
-      applicationSet = {
-        enabled = true
-        replicas = 1
-      }
-
-      notifications = {
-        enabled = false
-      }
-
-      dex = {
-        enabled = false
-      }
-
       configs = {
-        params = {
-          "server.insecure" = true
-        }
-
         cm = {
-          # credential template for private github repos
+          # credential template for private github repos (injected from Vault)
           "credentialTemplates.github" = yamlencode({
             url = "https://github.com/${data.vault_generic_secret.argocd_git.data["github_owner"]}"
             username = "oauth2"
             password = data.vault_generic_secret.argocd_git.data["github_token"]
           })
 
-          # repositories for git and helm
+          # repositories for git and helm (injected dynamically)
           repositories = yamlencode([
             {
               type = "git"
@@ -173,10 +138,6 @@ resource "helm_release" "argocd" {
               enableOCI = true
             }
           ])
-        }
-
-        secret = {
-          argocdServerAdminPassword = "$2a$10$yGT7V/vbE0ekkZHiaHvOhOsoh0EaJ7EXhgG8WHEzP1vG1x2s5MY.W"
         }
       }
     })
@@ -198,8 +159,8 @@ resource "helm_release" "root_app" {
   }
 
   set {
-    name  = "global.userEmail"
-    value = data.vault_generic_secret.platform_config.data["user_email"]
+    name  = "global.githubRepoUrl"
+    value = data.vault_generic_secret.argocd_git.data["repo_url"]
   }
 
   depends_on = [helm_release.argocd]

@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
-    
+      id-token: write # Required for OIDC JWT authentication
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,7 +19,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
@@ -40,6 +40,18 @@ jobs:
         id: apply
         run: terraform apply -auto-approve
         working-directory: ./infra/tier1_network
+
+      - name: Tier1 Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Infrastructure Progress
+          
+          ### Completed Tiers
+          - ✅ **Tier1**: Network (VPC, subnets, security groups)
+          
+          ### Next Steps
+          - Applying Tier2: Compute (EKS cluster, node groups)
+          EOF
 
   apply-tier2-compute:
     name: Apply Tier2 Compute
@@ -47,8 +59,8 @@ jobs:
     needs: apply-tier1-network
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
-    
+      id-token: write # Required for OIDC JWT authentication
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,7 +69,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
@@ -79,14 +91,34 @@ jobs:
         run: terraform apply -auto-approve
         working-directory: ./infra/tier2_compute
 
+      - name: Tier2 Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Infrastructure Progress
+          
+          ### Completed Tiers
+          - ✅ **Tier1**: Network (VPC, subnets, security groups)
+          - ✅ **Tier2**: Compute (EKS cluster, node groups)
+          
+          ### EKS Cluster Access
+          Configure kubectl to access the cluster:
+          \`\`\`bash
+          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
+          \`\`\`
+          
+          ### Next Steps
+          - Applying Tier3: Deployments (ArgoCD, webapp manifests)
+          EOF
+
   apply-tier3-deployments:
     name: Apply Tier3 Deployments
     runs-on: ubuntu-latest
     needs: apply-tier2-compute
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
-    
+      actions: write # Required to trigger other workflows
+      id-token: write # Required for OIDC JWT authentication
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,12 +127,13 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
-            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
+            secret/data/platform github_token | GITHUB_PAT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -122,21 +155,42 @@ jobs:
         run: |
           cd infra/tier3_deployments
           ARGOCD_URL=$(terraform output -raw argocd_url)
+          ECR_URL=$(terraform output -raw ecr_repository_url)
           echo "argocd_url=$ARGOCD_URL" >> $GITHUB_OUTPUT
+          echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
           echo "ArgoCD URL: $ARGOCD_URL"
 
-      - name: Trigger WebApp Build and Push
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'webapp-build-push.yml',
-              ref: 'main'
-            });
-            console.log('WebApp build triggered:', result.status);
+      - name: Tier3 Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Infrastructure Progress
+          
+          ### Completed Tiers
+          - ✅ **Tier1**: Network (VPC, subnets, security groups)
+          - ✅ **Tier2**: Compute (EKS cluster, node groups)
+          - ✅ **Tier3**: Deployments (ArgoCD, webapp manifests)
+          
+          ### Important Links
+          | Service | URL | Description |
+          |---------|-----|-------------|
+          | ArgoCD | [${{ steps.argocd_url.outputs.argocd_url }}](${{ steps.argocd_url.outputs.argocd_url }}) | GitOps deployment UI |
+          | ECR Repository | [${{ steps.argocd_url.outputs.ecr_url }}](${{ steps.argocd_url.outputs.ecr_url }}) | Container registry |
+          
+          ### Default Credentials
+          - ArgoCD: Username: admin / Password: admin
+          
+          ### EKS Cluster Access
+          Configure kubectl to access the cluster:
+          \`\`\`bash
+          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
+          \`\`\`
+          
+          ### Next Steps
+          1. **Trigger WebApp Build**: [Build and Push WebApp to ECR](../actions/workflows/webapp-build-push.yml) workflow
+          2. Wait 2-3 minutes for LoadBalancer to be fully ready
+          3. Check ArgoCD login and verify apps are syncing
+          4. Applying Tier4: Monitoring (CloudWatch dashboards, alerts)
+          EOF
 
   apply-tier4-monitoring:
     name: Apply Tier4 Monitoring
@@ -144,8 +198,8 @@ jobs:
     needs: apply-tier3-deployments
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
-    
+      id-token: write # Required for OIDC JWT authentication
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,7 +208,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
@@ -176,52 +230,43 @@ jobs:
         run: terraform apply -auto-approve
         working-directory: ./infra/tier4_monitoring
 
-      - name: Generate Infrastructure Summary
+      - name: Final Infrastructure Summary
         run: |
-          cd infra/tier3_deployments
-          ARGOCD_URL=$(terraform output -raw argocd_url)
-          ECR_URL=$(terraform output -raw ecr_repository_url)
-          
-          cd ../tier4_monitoring
+          cd infra/tier4_monitoring
           MONITORING_INFO=$(terraform output -raw monitoring_info)
-          
+
           # Extract URLs from monitoring info
           DASHBOARD_URL=$(echo "$MONITORING_INFO" | grep -o 'https://[^[:space:]]*dashboards[^[:space:]]*')
           CONTAINER_INSIGHTS_URL=$(echo "$MONITORING_INFO" | grep -o 'https://[^[:space:]]*container-insights[^[:space:]]*')
-          
-          # Generate webapp URL (same LB as ArgoCD)
-          WEBAPP_URL=$(echo "$ARGOCD_URL" | sed 's|http://|http://|')
-          
+
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## AWS Platform Infrastructure Applied
-          
-          ### Important Links
-          | Service | URL | Description |
-          |---------|-----|-------------|
-          | WebApp | [$WEBAPP_URL]($WEBAPP_URL) | Live application |
-          | ArgoCD | [$ARGOCD_URL]($ARGOCD_URL) | GitOps deployment UI |
-          | CloudWatch Dashboard | [Custom Dashboard]($DASHBOARD_URL) | Application metrics |
-          | Container Insights | [EKS Monitoring]($CONTAINER_INSIGHTS_URL) | Detailed container metrics |
-          | ECR Repository | [ECR Console](https://us-east-2.console.aws.amazon.com/ecr/repositories) | Container registry |
-          
-          ### Default Credentials
-          - ArgoCD: Username: admin / Password: admin
-          
-          ### Infrastructure Status
+
+          ### Completed Tiers
           - Tier1: Network (VPC, subnets, security groups)
           - Tier2: Compute (EKS cluster, node groups)  
           - Tier3: Deployments (ArgoCD, webapp manifests)
           - Tier4: Monitoring (CloudWatch dashboards, alerts)
-          - WebApp: Build and push automatically triggered
-          
+
+          ### Monitoring Links
+          | Service | URL | Description |
+          |---------|-----|-------------|
+          | CloudWatch Dashboard | [Custom Dashboard]($DASHBOARD_URL) | Application metrics |
+          | Container Insights | [EKS Monitoring]($CONTAINER_INSIGHTS_URL) | Detailed container metrics |
+
+          ### EKS Cluster Access
+          Configure kubectl to access the cluster:
+          \`\`\`bash
+          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
+          \`\`\`
+
           ### Next Steps
-          1. Wait 2-3 minutes for LoadBalancer to be fully ready
-          2. Check ArgoCD login and verify apps are syncing
-          3. Access webapp at the provided URL
-          4. Review CloudWatch dashboards for metrics
-          5. Configure email notifications in SNS console
-          
+          1. Trigger WebApp Build workflow to deploy application
+          2. Wait 2-3 minutes for LoadBalancer to be fully ready
+          3. Access monitoring dashboards to verify metrics collection
+          4. Configure email notifications in SNS console
+
           ### Additional Information
           - Detailed terraform outputs available in workflow step logs above
-          - Check individual tier apply steps for specific resource details
+          - All infrastructure components are ready for application deployment
           EOF

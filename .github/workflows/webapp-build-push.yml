@@ -58,6 +58,14 @@ jobs:
           VERSION=${LATEST_TAG#v}
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           
+          # First run: if no tags exist (v0.0.0), start at v1.0.0
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            NEW_VERSION="v1.0.0"
+            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "New version: $NEW_VERSION (first run)"
+            exit 0
+          fi
+          
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             BUMP_TYPE="${{ inputs.version_bump }}"
           else
@@ -81,6 +89,11 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          # check if tag already exists
+          if git tag -l | grep -q "^${{ steps.version.outputs.new_version }}$"; then
+            echo "Tag ${{ steps.version.outputs.new_version }} already exists, skipping tag creation"
+            exit 0
+          fi
           git tag ${{ steps.version.outputs.new_version }}
           git push origin ${{ steps.version.outputs.new_version }}
 
@@ -132,6 +145,7 @@ jobs:
             type=raw,value=${{ needs.version.outputs.new_version }},enable={{is_default_branch}}
             type=ref,event=branch
             type=ref,event=pr
+          # Blue-Green Strategy: Every main branch push gets both version tag (for blue/stable) and latest tag (for green/testing)
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -146,8 +160,10 @@ jobs:
       - name: Image pushed successfully
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "✅ Image pushed to ECR with 'latest' tag"
-          echo "ArgoCD will automatically sync and deploy the new image"
+          echo "Image pushed to ECR with tags: latest + ${{ needs.version.outputs.new_version }}"
+          echo "Blue deployment (stable): ${{ needs.version.outputs.new_version }}"
+          echo "Green deployment (testing): latest" 
+          echo "ArgoCD will automatically sync based on configured tags"
 
       - name: Summary
         run: |

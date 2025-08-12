@@ -1,3 +1,7 @@
+# Global values injected by Terraform from Vault
+global:
+  githubRepoUrl: "" # Populated by Terraform
+
 applications:
   - name: thrive-webapp
     namespace: thrive-webapp

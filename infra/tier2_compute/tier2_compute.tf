@@ -2,6 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
+    # Change to your TFC organization name if different
     organization = "aws-platform"
 
     workspaces {
@@ -22,11 +23,19 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.31"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 3.0"
+    }
   }
 }
 
+data "vault_generic_secret" "platform_config" {
+  path = "secret/platform"
+}
+
 provider "aws" {
-  region = "us-east-2"
+  region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
 provider "helm" {
@@ -302,7 +311,7 @@ resource "helm_release" "cluster_autoscaler" {
         enabled     = true
       }
 
-      awsRegion = "us-east-2"
+      awsRegion = data.vault_generic_secret.platform_config.data["aws_region"]
 
       cloudProvider = "aws"
 

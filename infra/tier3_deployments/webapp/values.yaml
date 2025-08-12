@@ -17,8 +17,7 @@ blueGreen:
 replicaCount: 2
 
 image:
-  # ECR URL injected via ArgoCD global values from terraform
-  repository: '{{ .Values.global.ecrRepository }}'
+  repository:
   tag: 'latest'
   pullPolicy: Always
 

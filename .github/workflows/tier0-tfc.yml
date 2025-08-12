@@ -51,7 +51,14 @@ jobs:
             secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
             secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
             secret/data/terraform token | TF_VAR_tfc_token ;
-            secret/data/terraform organization | TF_VAR_tfc_organization
+            secret/data/platform tfc_organization | TF_VAR_tfc_organization ;
+            secret/data/platform github_token | TF_VAR_github_token ;
+            secret/data/platform user_email | TF_VAR_user_email ;
+            secret/data/platform github_owner | TF_VAR_github_owner ;
+            secret/data/platform github_repo | TF_VAR_github_repo ;
+            secret/data/platform aws_account_id | TF_VAR_aws_account_id ;
+            secret/data/hcp client_id | TF_VAR_hcp_client_id ;
+            secret/data/hcp client_secret | TF_VAR_hcp_client_secret
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -158,7 +165,14 @@ jobs:
             secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
             secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
             secret/data/terraform token | TF_VAR_tfc_token ;
-            secret/data/terraform organization | TF_VAR_tfc_organization
+            secret/data/platform tfc_organization | TF_VAR_tfc_organization ;
+            secret/data/platform github_token | TF_VAR_github_token ;
+            secret/data/platform user_email | TF_VAR_user_email ;
+            secret/data/platform github_owner | TF_VAR_github_owner ;
+            secret/data/platform github_repo | TF_VAR_github_repo ;
+            secret/data/platform aws_account_id | TF_VAR_aws_account_id ;
+            secret/data/hcp client_id | TF_VAR_hcp_client_id ;
+            secret/data/hcp client_secret | TF_VAR_hcp_client_secret
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
