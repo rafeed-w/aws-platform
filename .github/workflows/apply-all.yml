@@ -85,6 +85,7 @@ jobs:
     needs: apply-tier2-compute
     permissions:
       contents: read
+      actions: write   # Required to trigger other workflows
       id-token: write  # Required for OIDC JWT authentication
     
     steps:
@@ -100,7 +101,8 @@ jobs:
           role: github-actions-role
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
-            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
+            secret/data/platform github_token | GITHUB_PAT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -128,7 +130,7 @@ jobs:
       - name: Trigger WebApp Build and Push
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ env.GITHUB_PAT }}
           script: |
             const result = await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
