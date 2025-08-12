@@ -1,18 +1,13 @@
-root:
-  name: root-app
-  namespace: systemtool-argocd
-  path: infra/tier3_deployments/root
-
 applications:
   - name: thrive-webapp
     namespace: thrive-webapp
     path: infra/tier3_deployments/webapp
 
 systemtools:
-  # - name: cert-manager
-  #   chartRepo: https://charts.jetstack.io
-  #   chart: cert-manager
-  #   version: v1.16.2
+  - name: cert-manager
+    chartRepo: https://charts.jetstack.io
+    chart: cert-manager
+    version: v1.16.2
 
   - name: nginx
     chartRepo: https://kubernetes.github.io/ingress-nginx

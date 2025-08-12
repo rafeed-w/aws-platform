@@ -67,10 +67,10 @@ locals {
 
 # CloudWatch Observability Add-on for EKS
 resource "aws_eks_addon" "cloudwatch_observability" {
-  cluster_name             = local.cluster_name
-  addon_name              = "amazon-cloudwatch-observability"
+  cluster_name                = local.cluster_name
+  addon_name                  = "amazon-cloudwatch-observability"
   resolve_conflicts_on_create = "OVERWRITE"
-  service_account_role_arn = aws_iam_role.cloudwatch_agent.arn
+  service_account_role_arn    = aws_iam_role.cloudwatch_agent.arn
 
   depends_on = [
     aws_iam_role_policy_attachment.cloudwatch_agent_server_policy,
@@ -145,11 +145,11 @@ resource "aws_sns_topic" "cloudwatch_alerts" {
   tags = local.common_tags
 }
 
-# SNS Topic Subscription (replace with actual email)
+# SNS Topic Subscription - email needs to be set manually or via variable
 resource "aws_sns_topic_subscription" "email_alerts" {
   topic_arn = aws_sns_topic.cloudwatch_alerts.arn
   protocol  = "email"
-  endpoint  = "admin@thrive.local" # Replace with actual email
+  endpoint  = "perch.snarks.2p@icloud.com" # Update this email address
 }
 
 # CloudWatch Alarms for EKS Cluster
@@ -210,17 +210,156 @@ resource "aws_cloudwatch_metric_alarm" "pod_restart_high" {
   tags = local.common_tags
 }
 
-# CloudWatch Dashboard for EKS monitoring
+# Health Check Alarm for webapp
+resource "aws_cloudwatch_metric_alarm" "webapp_health_check" {
+  alarm_name          = "${local.cluster_name}-webapp-health-check"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "TargetHealth"
+  namespace           = "AWS/NetworkELB"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "1"
+  alarm_description   = "This metric monitors webapp health check status"
+  alarm_actions       = [aws_sns_topic.cloudwatch_alerts.arn]
+  treat_missing_data  = "breaching"
+
+  dimensions = {
+    LoadBalancer = "net/a4dbbf5d1f7d448ac9fe5abf54b950d1"
+  }
+
+  tags = local.common_tags
+}
+
+# CloudWatch Dashboard focused on webapp monitoring
 resource "aws_cloudwatch_dashboard" "eks_monitoring" {
   dashboard_name = "${local.company}-${local.environment}-eks-monitoring"
 
   dashboard_body = jsonencode({
     widgets = [
+      # Row 1: Webapp Metrics
       {
         type   = "metric"
         x      = 0
         y      = 0
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["ContainerInsights", "pod_cpu_utilization_over_pod_limit", "ClusterName", local.cluster_name, "Namespace", "thrive-webapp"]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-2"
+          title  = "Webapp CPU (% of Pod Limit)"
+          yAxis = {
+            left = {
+              min = 0
+              max = 50
+            }
+          }
+        }
+      },
+      {
+        type   = "metric"
+        x      = 8
+        y      = 0
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["ContainerInsights", "pod_memory_utilization_over_pod_limit", "ClusterName", local.cluster_name, "Namespace", "thrive-webapp"]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-2"
+          title  = "Webapp Memory (% of Pod Limit)"
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      },
+      {
+        type   = "metric"
+        x      = 16
+        y      = 0
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/NetworkELB", "NewFlowCount", "LoadBalancer", "net/a4dbbf5d1f7d448ac9fe5abf54b950d1"]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = "us-east-2"
+          title  = "Webapp Requests/sec"
+        }
+      },
+      # Row 2: Webapp Network & Pod Count
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
         width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["ContainerInsights", "pod_network_rx_bytes", "ClusterName", local.cluster_name, "Namespace", "thrive-webapp"],
+            [".", "pod_network_tx_bytes", ".", ".", ".", "."]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-2"
+          title  = "Webapp Network Traffic (Bytes/sec)"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["ContainerInsights", "service_number_of_running_pods", "ClusterName", local.cluster_name, "Namespace", "thrive-webapp"]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-2"
+          title  = "Webapp Running Pods"
+        }
+      },
+      # Row 3: Cluster Overview
+      {
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["ContainerInsights", "cluster_node_count", "ClusterName", local.cluster_name]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-2"
+          title  = "Cluster Ready Nodes"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 8
+        y      = 12
+        width  = 8
         height = 6
 
         properties = {
@@ -229,9 +368,9 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
             [".", "node_memory_utilization", ".", "."]
           ]
           period = 300
-          stat   = "Average"
+          stat   = "Maximum"
           region = "us-east-2"
-          title  = "EKS Node Resource Utilization"
+          title  = "Node Resource Utilization (%)"
           yAxis = {
             left = {
               min = 0
@@ -242,20 +381,19 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
       },
       {
         type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
+        x      = 16
+        y      = 12
+        width  = 8
         height = 6
 
         properties = {
           metrics = [
-            ["ContainerInsights", "pod_cpu_utilization", "ClusterName", local.cluster_name, "Namespace", "thrive-webapp"],
-            [".", "pod_memory_utilization", ".", ".", ".", "."]
+            ["ContainerInsights", "node_filesystem_utilization", "ClusterName", local.cluster_name]
           ]
           period = 300
-          stat   = "Average"
+          stat   = "Maximum"
           region = "us-east-2"
-          title  = "WebApp Pod Resource Utilization"
+          title  = "Node Filesystem Usage (%)"
           yAxis = {
             left = {
               min = 0
@@ -264,22 +402,16 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           }
         }
       },
+      # Row 4: Text Instructions
       {
-        type   = "metric"
+        type   = "text"
         x      = 0
-        y      = 6
+        y      = 18
         width  = 24
-        height = 6
+        height = 2
 
         properties = {
-          metrics = [
-            ["ContainerInsights", "pod_number_of_container_restarts", "ClusterName", local.cluster_name],
-            [".", "service_number_of_running_pods", ".", "."]
-          ]
-          period = 300
-          stat   = "Average"
-          region = "us-east-2"
-          title  = "Pod Health Metrics"
+          markdown = "**For detailed analysis:** Go to CloudWatch → Container Insights"
         }
       }
     ]
