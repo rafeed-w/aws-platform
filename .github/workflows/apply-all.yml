@@ -117,6 +117,27 @@ jobs:
         run: terraform apply -auto-approve
         working-directory: ./infra/tier3_deployments
 
+      - name: Get ArgoCD URL
+        id: argocd_url
+        run: |
+          cd infra/tier3_deployments
+          ARGOCD_URL=$(terraform output -raw argocd_url)
+          echo "argocd_url=$ARGOCD_URL" >> $GITHUB_OUTPUT
+          echo "ArgoCD URL: $ARGOCD_URL"
+
+      - name: Trigger WebApp Build and Push
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'webapp-build-push.yml',
+              ref: 'main'
+            });
+            console.log('WebApp build triggered:', result.status);
+
   apply-tier4-monitoring:
     name: Apply Tier4 Monitoring
     runs-on: ubuntu-latest
@@ -154,3 +175,53 @@ jobs:
         id: apply
         run: terraform apply -auto-approve
         working-directory: ./infra/tier4_monitoring
+
+      - name: Generate Infrastructure Summary
+        run: |
+          cd infra/tier3_deployments
+          ARGOCD_URL=$(terraform output -raw argocd_url)
+          ECR_URL=$(terraform output -raw ecr_repository_url)
+          
+          cd ../tier4_monitoring
+          MONITORING_INFO=$(terraform output -raw monitoring_info)
+          
+          # Extract URLs from monitoring info
+          DASHBOARD_URL=$(echo "$MONITORING_INFO" | grep -o 'https://[^[:space:]]*dashboards[^[:space:]]*')
+          CONTAINER_INSIGHTS_URL=$(echo "$MONITORING_INFO" | grep -o 'https://[^[:space:]]*container-insights[^[:space:]]*')
+          
+          # Generate webapp URL (same LB as ArgoCD)
+          WEBAPP_URL=$(echo "$ARGOCD_URL" | sed 's|http://|http://|')
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## AWS Platform Infrastructure Applied
+          
+          ### Important Links
+          | Service | URL | Description |
+          |---------|-----|-------------|
+          | WebApp | [$WEBAPP_URL]($WEBAPP_URL) | Live application |
+          | ArgoCD | [$ARGOCD_URL]($ARGOCD_URL) | GitOps deployment UI |
+          | CloudWatch Dashboard | [Custom Dashboard]($DASHBOARD_URL) | Application metrics |
+          | Container Insights | [EKS Monitoring]($CONTAINER_INSIGHTS_URL) | Detailed container metrics |
+          | ECR Repository | [ECR Console](https://us-east-2.console.aws.amazon.com/ecr/repositories) | Container registry |
+          
+          ### Default Credentials
+          - ArgoCD: Username: admin / Password: admin
+          
+          ### Infrastructure Status
+          - Tier1: Network (VPC, subnets, security groups)
+          - Tier2: Compute (EKS cluster, node groups)  
+          - Tier3: Deployments (ArgoCD, webapp manifests)
+          - Tier4: Monitoring (CloudWatch dashboards, alerts)
+          - WebApp: Build and push automatically triggered
+          
+          ### Next Steps
+          1. Wait 2-3 minutes for LoadBalancer to be fully ready
+          2. Check ArgoCD login and verify apps are syncing
+          3. Access webapp at the provided URL
+          4. Review CloudWatch dashboards for metrics
+          5. Configure email notifications in SNS console
+          
+          ### Additional Information
+          - Detailed terraform outputs available in workflow step logs above
+          - Check individual tier apply steps for specific resource details
+          EOF
