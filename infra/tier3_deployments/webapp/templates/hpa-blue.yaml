@@ -1,15 +1,16 @@
-{{- if and .Values.autoscaling.enabled (not .Values.blueGreen.enabled) }}
+{{- if and .Values.blueGreen.enabled .Values.autoscaling.enabled (gt (int .Values.blueGreen.blue.replicaCount) 0) }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "thrive-webapp.fullname" . }}
+  name: {{ include "thrive-webapp.fullname" . }}-blue
   labels:
     {{- include "thrive-webapp.labels" . | nindent 4 }}
+    version: blue
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "thrive-webapp.fullname" . }}
+    name: {{ include "thrive-webapp.fullname" . }}-blue
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

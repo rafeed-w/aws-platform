@@ -1,3 +1,19 @@
+# Blue/Green deployment configuration
+blueGreen:
+  enabled: true
+  activeVersion: blue # blue or green
+
+  blue:
+    replicaCount: 2
+    image:
+      tag: 'v1.0.0'
+
+  green:
+    replicaCount: 2
+    image:
+      tag: 'latest' # New version for testing
+
+# Single deployment (when blueGreen.enabled: false)
 replicaCount: 2
 
 image:
@@ -16,8 +32,8 @@ ingress:
   enabled: true
   className: 'nginx'
   annotations:
-    cert-manager.io/cluster-issuer: "selfsigned-issuer"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: 'selfsigned-issuer'
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
   hosts:
     - paths:
         - path: /
