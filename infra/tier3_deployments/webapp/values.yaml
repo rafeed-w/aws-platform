@@ -1,3 +1,19 @@
+# Blue/Green deployment configuration
+blueGreen:
+  enabled: true
+  activeVersion: blue  # blue or green
+  
+  blue:
+    replicaCount: 2
+    image:
+      tag: 'v1.0.0'  # Current stable version
+  
+  green:  
+    replicaCount: 0  # 0 = inactive, 2 = active for testing
+    image:
+      tag: 'latest'  # New version for testing
+
+# Legacy single deployment (when blueGreen.enabled: false)
 replicaCount: 2
 
 image:

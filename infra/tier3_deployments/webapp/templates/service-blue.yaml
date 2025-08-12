@@ -1,9 +1,11 @@
+{{- if .Values.blueGreen.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "thrive-webapp.fullname" . }}
+  name: {{ include "thrive-webapp.fullname" . }}-blue
   labels:
     {{- include "thrive-webapp.labels" . | nindent 4 }}
+    version: blue
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -13,6 +15,5 @@ spec:
       name: http
   selector:
     {{- include "thrive-webapp.selectorLabels" . | nindent 4 }}
-    {{- if .Values.blueGreen.enabled }}
-    version: {{ .Values.blueGreen.activeVersion }}
-    {{- end }}
+    version: blue
+{{- end }}

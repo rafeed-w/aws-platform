@@ -1,25 +1,26 @@
-{{- if not .Values.blueGreen.enabled }}
+{{- if .Values.blueGreen.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "thrive-webapp.fullname" . }}
+  name: {{ include "thrive-webapp.fullname" . }}-green
   labels:
     {{- include "thrive-webapp.labels" . | nindent 4 }}
+    version: green
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  replicas: {{ .Values.blueGreen.green.replicaCount }}
   selector:
     matchLabels:
       {{- include "thrive-webapp.selectorLabels" . | nindent 6 }}
+      version: green
   template:
     metadata:
       labels:
         {{- include "thrive-webapp.selectorLabels" . | nindent 8 }}
+        version: green
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.blueGreen.green.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -27,12 +28,16 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 {{- end }}
