@@ -1,7 +1,7 @@
 # Blue/Green deployment configuration
 blueGreen:
   enabled: true
-  activeVersion: blue # blue or green
+  activeVersion: blue # flag to switch between blue and green
 
   blue:
     replicaCount: 2
