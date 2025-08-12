@@ -98,10 +98,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Import AWS Account ID from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/aws account_id | AWS_ACCOUNT_ID
+
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/thrive-test-github-actions-role
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/thrive-test-github-actions-role
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-WebApp-Build
 

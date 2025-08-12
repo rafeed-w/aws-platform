@@ -25,6 +25,11 @@ variable "tfc_token" {
   sensitive   = true
 }
 
+variable "tfc_organization" {
+  description = "Terraform Cloud organization name"
+  type        = string
+}
+
 variable "hcp_client_id" {
   description = "HCP Client ID for Vault"
   type        = string

@@ -19,20 +19,30 @@ on:
         default: '2m'
         type: string
 
-env:
-  TF_CLOUD_ORGANIZATION: 'aws-platform'
-  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-
 jobs:
   get-webapp-url:
     name: Get Webapp URL
     runs-on: ubuntu-latest
     outputs:
       webapp_url: ${{ steps.get_url.outputs.webapp_url }}
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC JWT authentication
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Import Secrets from Vault
+        uses: hashicorp/vault-action@v2
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          namespace: admin  # Required for HCP Vault
+          method: jwt
+          role: github-actions-role
+          secrets: |
+            secret/data/terraform token | TF_API_TOKEN ;
+            secret/data/terraform organization | TF_CLOUD_ORGANIZATION
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
