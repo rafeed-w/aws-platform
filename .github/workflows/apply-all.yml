@@ -127,18 +127,6 @@ jobs:
           echo "argocd_url=$ARGOCD_URL" >> $GITHUB_OUTPUT
           echo "ArgoCD URL: $ARGOCD_URL"
 
-      - name: Trigger WebApp Build and Push
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ env.GITHUB_PAT }}
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'webapp-build-push.yml',
-              ref: 'main'
-            });
-            console.log('WebApp build triggered:', result.status);
 
   apply-tier4-monitoring:
     name: Apply Tier4 Monitoring
@@ -214,14 +202,15 @@ jobs:
           - Tier2: Compute (EKS cluster, node groups)  
           - Tier3: Deployments (ArgoCD, webapp manifests)
           - Tier4: Monitoring (CloudWatch dashboards, alerts)
-          - WebApp: Build and push automatically triggered
+          - WebApp: Ready for manual build trigger
           
           ### Next Steps
-          1. Wait 2-3 minutes for LoadBalancer to be fully ready
-          2. Check ArgoCD login and verify apps are syncing
-          3. Access webapp at the provided URL
-          4. Review CloudWatch dashboards for metrics
-          5. Configure email notifications in SNS console
+          1. **Trigger WebApp Build**: [Build and Push WebApp to ECR](../actions/workflows/webapp-build-push.yml) workflow
+          2. Wait 2-3 minutes for LoadBalancer to be fully ready
+          3. Check ArgoCD login and verify apps are syncing
+          4. Access webapp at the provided URL
+          5. Review CloudWatch dashboards for metrics
+          6. Configure email notifications in SNS console
           
           ### Additional Information
           - Detailed terraform outputs available in workflow step logs above
