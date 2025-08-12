@@ -1,0 +1,140 @@
+name: Tier0 Terraform Cloud
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/tier0_tfc/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/tier0_tfc/**'
+  workflow_dispatch:
+
+env:
+  TF_CLOUD_ORGANIZATION: 'aws-platform'
+  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+  WORKSPACE_NAME: 'tier0_tfc'
+  WORKSPACE_DIR: 'infra/tier0_tfc'
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    environment: terraform-plan
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload Configuration
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.1
+        id: plan-upload
+        with:
+          workspace: ${{ env.WORKSPACE_NAME }}
+          directory: ./${{ env.WORKSPACE_DIR }}
+          speculative: true
+
+      - name: Create Plan Run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.1
+        id: plan-run
+        with:
+          workspace: ${{ env.WORKSPACE_NAME }}
+          configuration_version: ${{ steps.plan-upload.outputs.configuration_version_id }}
+          plan_only: true
+
+      - name: Get Plan Output
+        uses: hashicorp/tfc-workflows-github/actions/plan-output@v1.3.1
+        id: plan-output
+        with:
+          plan: ${{ fromJSON(steps.plan-run.outputs.payload).data.relationships.plan.data.id }}
+
+      - name: Update PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'User' && comment.body.includes('Terraform Plan: ${{ env.WORKSPACE_NAME }}')
+            })
+
+            const output = `## 📋 Terraform Plan: \`${{ env.WORKSPACE_NAME }}\`
+
+            **Plan Status:** \`${{ steps.plan-run.outputs.run_status }}\`
+            **Workspace:** [\`${{ env.WORKSPACE_NAME }}\`](https://app.terraform.io/app/${{ env.TF_CLOUD_ORGANIZATION }}/workspaces/${{ env.WORKSPACE_NAME }})
+            **Run:** [\`${{ steps.plan-run.outputs.run_id }}\`](https://app.terraform.io/app/${{ env.TF_CLOUD_ORGANIZATION }}/workspaces/${{ env.WORKSPACE_NAME }}/runs/${{ steps.plan-run.outputs.run_id }})
+
+            <details><summary>Show Output</summary>
+
+            \`\`\`
+            ${{ steps.plan-output.outputs.plan }}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.WORKSPACE_DIR }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              })
+            } else {
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: output
+              })
+            }
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: terraform-apply
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload Configuration
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.1
+        id: apply-upload
+        with:
+          workspace: ${{ env.WORKSPACE_NAME }}
+          directory: ./${{ env.WORKSPACE_DIR }}
+
+      - name: Create Apply Run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.1
+        id: apply-run
+        with:
+          workspace: ${{ env.WORKSPACE_NAME }}
+          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+          plan_only: false
+
+      - name: Apply Run
+        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.1
+        id: apply
+        with:
+          run: ${{ steps.apply-run.outputs.run_id }}
+          comment: 'Applied via GitHub Actions by @${{ github.actor }}'
+
+      - name: Display Apply Results
+        run: |
+          echo "### ✅ Terraform Apply: ${{ env.WORKSPACE_NAME }}"
+          echo "**Status:** ${{ steps.apply.outputs.apply_status }}"
+          echo "**Run ID:** ${{ steps.apply-run.outputs.run_id }}"
+          echo "**Workspace:** https://app.terraform.io/app/${{ env.TF_CLOUD_ORGANIZATION }}/workspaces/${{ env.WORKSPACE_NAME }}"
