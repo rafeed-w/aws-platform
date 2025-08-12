@@ -15,13 +15,15 @@ service:
 ingress:
   enabled: true
   className: 'nginx'
-  annotations: {}
+  annotations:
+    cert-manager.io/cluster-issuer: "selfsigned-issuer"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
     - paths:
         - path: /
           pathType: Prefix
-      # host: webapp.thrive.com # Replace with your actual domain + DNS setup
-  tls: []
+  tls:
+    - secretName: webapp-tls-cert
 
 resources:
   limits:
