@@ -175,9 +175,9 @@ resource "aws_eks_node_group" "main" {
   instance_types = ["t3.micro"]
 
   scaling_config {
-    desired_size = 7
-    max_size     = 10
-    min_size     = 7
+    desired_size = 10
+    max_size     = 20
+    min_size     = 10
   }
 
   update_config {
@@ -331,7 +331,7 @@ resource "helm_release" "cluster_autoscaler" {
       rbac = {
         serviceAccount = {
           create = true
-          name = "cluster-autoscaler"
+          name   = "cluster-autoscaler"
           annotations = {
             "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
           }
