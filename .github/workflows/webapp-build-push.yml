@@ -115,7 +115,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin
           method: jwt
           role: github-actions-role
           secrets: |
@@ -145,7 +145,6 @@ jobs:
             type=raw,value=${{ needs.version.outputs.new_version }},enable={{is_default_branch}}
             type=ref,event=branch
             type=ref,event=pr
-          # Blue-Green Strategy: Every main branch push gets both version tag (for blue/stable) and latest tag (for green/testing)
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

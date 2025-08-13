@@ -27,7 +27,7 @@ jobs:
       webapp_url: ${{ steps.get_url.outputs.webapp_url }}
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
+      id-token: write
 
     steps:
       - name: Checkout
@@ -37,7 +37,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin
           method: jwt
           role: github-actions-role
           secrets: |

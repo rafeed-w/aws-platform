@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write # Required for OIDC JWT authentication
+      id-token: write
 
     steps:
       - name: Checkout
@@ -35,7 +35,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin # Required for HCP Vault
+          namespace: admin
           method: jwt
           role: github-actions-role
           secrets: |
@@ -121,7 +121,7 @@ jobs:
     environment: terraform-apply
     permissions:
       contents: read
-      id-token: write # Required for OIDC JWT authentication
+      id-token: write
 
     steps:
       - name: Checkout
@@ -131,7 +131,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin # Required for HCP Vault
+          namespace: admin
           method: jwt
           role: github-actions-role
           secrets: |
