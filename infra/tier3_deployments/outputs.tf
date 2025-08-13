@@ -7,6 +7,24 @@ data "kubernetes_service" "argocd_server" {
   depends_on = [helm_release.argocd]
 }
 
+data "kubernetes_service" "nginx_controller" {
+  metadata {
+    name      = "nginx-ingress-nginx-controller"
+    namespace = "systemtool-nginx"
+  }
+  depends_on = [helm_release.root_app]
+}
+
+output "argocd_loadbalancer_dns" {
+  description = "ArgoCD LoadBalancer DNS name"
+  value       = data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname
+}
+
+output "webapp_loadbalancer_dns" {
+  description = "WebApp LoadBalancer DNS name (nginx ingress)"
+  value       = data.kubernetes_service.nginx_controller.status[0].load_balancer[0].ingress[0].hostname
+}
+
 output "argocd_url" {
   description = "ArgoCD UI URL"
   value       = "http://${replace(data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname, "***", "us-east-2")}"

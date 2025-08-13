@@ -12,29 +12,29 @@ jobs:
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           # AWS Platform Infrastructure Deployment
-          
+
           This workflow will deploy a complete, scalable AWS platform infrastructure across multiple tiers. All relevant details will be updated below as each tier completes.
-          
+
           ## Deployment Plan
-          
+
           ### Infrastructure Tiers
           - **Tier 0**: Terraform Cloud configuration (prerequisite)
           - **Tier 1**: Network infrastructure (VPC, subnets, security groups)
           - **Tier 2**: Compute resources (EKS cluster, node groups)
           - **Tier 3**: Application deployments (ArgoCD, webapp manifests)
           - **Tier 4**: Monitoring and observability (CloudWatch dashboards, alerts)
-          
+
           ### Expected Timeline
           - Total deployment time: ~20-25 minutes
           - Tier 2 (EKS cluster) may take longer (~8-10 minutes)
-          
+
           ### What to Expect
           - Real-time progress updates will appear below
           - Access URLs and credentials will be provided after each tier
           - Final summary with all links will be available at completion
-          
+
           ---
-          
+
           ## Live Progress Updates
           EOF
 
@@ -170,17 +170,8 @@ jobs:
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
             secret/data/platform github_token | GITHUB_PAT ;
             secret/data/aws account_id | AWS_ACCOUNT_ID ;
-            secret/data/platform aws_region | AWS_REGION ;
             secret/data/platform github_owner | GITHUB_OWNER ;
             secret/data/platform github_repo | GITHUB_REPO
-
-      - name: Expose Non-Secret Variables
-        id: expose_vars
-        run: |
-          echo "aws_region=$AWS_REGION" >> $GITHUB_OUTPUT
-          echo "aws_account_id=$AWS_ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "github_owner=$GITHUB_OWNER" >> $GITHUB_OUTPUT
-          echo "github_repo=$GITHUB_REPO" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -197,15 +188,18 @@ jobs:
         run: terraform apply -auto-approve
         working-directory: ./infra/tier3_deployments
 
-      - name: Get ArgoCD URL
-        id: argocd_url
+      - name: Get Load Balancer DNS Names
+        id: lb_dns
         run: |
           cd infra/tier3_deployments
-          ARGOCD_URL=$(terraform output -raw argocd_url)
+          ARGOCD_DNS=$(terraform output -raw argocd_loadbalancer_dns)
+          WEBAPP_DNS=$(terraform output -raw webapp_loadbalancer_dns)
           ECR_URL=$(terraform output -raw ecr_repository_url)
-          echo "argocd_url=$ARGOCD_URL" >> $GITHUB_OUTPUT
+          echo "argocd_dns=$ARGOCD_DNS" >> $GITHUB_OUTPUT
+          echo "webapp_dns=$WEBAPP_DNS" >> $GITHUB_OUTPUT
           echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
-          echo "ArgoCD URL: $ARGOCD_URL"
+          echo "ArgoCD DNS: $ARGOCD_DNS"
+          echo "WebApp DNS: $WEBAPP_DNS"
 
       - name: Tier3 Summary
         run: |
@@ -220,7 +214,8 @@ jobs:
           ### Important Links
           | Service | URL | Description |
           |---------|-----|-------------|
-          | ArgoCD | [${{ steps.argocd_url.outputs.argocd_url }}](${{ steps.argocd_url.outputs.argocd_url }}) | GitOps deployment UI |
+          | ArgoCD | [http://${{ steps.lb_dns.outputs.argocd_dns }}](http://${{ steps.lb_dns.outputs.argocd_dns }}) | GitOps deployment UI |
+          | WebApp | [http://${{ steps.lb_dns.outputs.webapp_dns }}](http://${{ steps.lb_dns.outputs.webapp_dns }}) | Demo web application |
 
           ### Default Credentials
           - ArgoCD: Username: admin / Password: admin
