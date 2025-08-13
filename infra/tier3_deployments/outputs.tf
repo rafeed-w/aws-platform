@@ -9,7 +9,7 @@ data "kubernetes_service" "argocd_server" {
 
 output "argocd_url" {
   description = "ArgoCD UI URL"
-  value       = "http://${data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname}"
+  value       = "http://${replace(data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname, "***", "us-east-2")}"
 }
 
 output "connection_info" {

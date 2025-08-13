@@ -221,13 +221,12 @@ jobs:
           | Service | URL | Description |
           |---------|-----|-------------|
           | ArgoCD | [${{ steps.argocd_url.outputs.argocd_url }}](${{ steps.argocd_url.outputs.argocd_url }}) | GitOps deployment UI |
-          | ECR Repository | [AWS Console](https://${{ steps.expose_vars.outputs.aws_region }}.console.aws.amazon.com/ecr/repositories/private/${{ steps.expose_vars.outputs.aws_account_id }}/thrive-test-applications?region=${{ steps.expose_vars.outputs.aws_region }}) | Container registry |
 
           ### Default Credentials
           - ArgoCD: Username: admin / Password: admin
 
           ### Next Steps
-          1. **Trigger WebApp Build**: [Build and Push WebApp to ECR](https://github.com/${{ steps.expose_vars.outputs.github_owner }}/${{ steps.expose_vars.outputs.github_repo }}/actions/workflows/webapp-build-push.yml) workflow
+          1. **Trigger WebApp Build**: Go to Actions tab → Select "Build and Push WebApp to ECR" workflow → Click "Run workflow" button → Select version type from dropdown
           2. Wait 2-3 minutes for LoadBalancer to be fully ready
               - If the ArgoCD webapp is in a degraded state, it is likely that the image version is not yet available in ECR. The WebApp Build workflow has a dropdown to trigger major, minor, or patch versions
           3. Check ArgoCD login and verify apps are syncing

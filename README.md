@@ -1,6 +1,6 @@
 # AWS Platform
 
-[TODO: Architecture Diagram Space]
+![alt text](thrive-platform.drawio.png)
 
 ## Quick Start
 
