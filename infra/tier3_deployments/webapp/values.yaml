@@ -1,7 +1,7 @@
-# Blue/Green deployment configuration
+# blue/green deployment config
 blueGreen:
   enabled: true
-  activeVersion: blue # flag to switch between blue and green
+  activeVersion: blue # switch flag
 
   blue:
     replicaCount: 2
@@ -11,9 +11,9 @@ blueGreen:
   green:
     replicaCount: 2
     image:
-      tag: 'latest' # New version for testing
+      tag: 'latest' # new version
 
-# Single deployment (when blueGreen.enabled: false)
+# single deployment mode
 replicaCount: 2
 
 image:

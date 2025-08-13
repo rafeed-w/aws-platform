@@ -10,7 +10,7 @@ server:
       service.beta.kubernetes.io/aws-load-balancer-type: nlb
       service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
 
-  # Enable insecure mode for easier setup (can be secured later with TLS)
+  # insecure mode for easier setup
   extraArgs:
     - --insecure
 
@@ -32,12 +32,12 @@ configs:
     server.insecure: true
 
   cm:
-    # URL will be auto-updated by ArgoCD to use the actual LoadBalancer hostname
+    # url auto-updated by argocd
 
-    # Git repositories and credential templates injected by Terraform from Vault
-    repositories: {} # Populated by Terraform
-    credentialTemplates: {} # Populated by Terraform
+    # repos and creds from terraform/vault
+    repositories: {} # populated by terraform
+    credentialTemplates: {} # populated by terraform
 
-  # Default admin password (change this in production)
+  # default admin password
   secret:
-    argocdServerAdminPassword: '$2a$10$yGT7V/vbE0ekkZHiaHvOhOsoh0EaJ7EXhgG8WHEzP1vG1x2s5MY.W' # password: admin
+    argocdServerAdminPassword: '$2a$10$yGT7V/vbE0ekkZHiaHvOhOsoh0EaJ7EXhgG8WHEzP1vG1x2s5MY.W' # admin

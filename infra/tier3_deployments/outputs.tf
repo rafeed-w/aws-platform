@@ -1,4 +1,4 @@
-# ArgoCD Access Information
+# argocd access
 data "kubernetes_service" "argocd_server" {
   metadata {
     name      = "argocd-server"
@@ -32,16 +32,6 @@ output "connection_info" {
   EOT
 }
 
-
-# Application namespaces
-output "application_namespaces" {
-  description = "List of application namespaces for monitoring"
-  value = [
-    "thrive-webapp"
-  ]
-}
-
-# CI/CD Infrastructure outputs
 output "ecr_repository_url" {
   description = "ECR repository URL for all applications"
   value       = aws_ecr_repository.applications.repository_url

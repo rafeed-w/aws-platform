@@ -19,15 +19,15 @@ tolerations: []
 affinity:
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      podAffinityTerm:
-        labelSelector:
-          matchExpressions:
-          - key: app.kubernetes.io/name
-            operator: In
-            values:
-            - cert-manager
-        topologyKey: kubernetes.io/hostname
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - cert-manager
+          topologyKey: kubernetes.io/hostname
 
 webhook:
   replicaCount: 2
@@ -55,7 +55,7 @@ global:
 startupapicheck:
   enabled: true
 
-# Extra objects to create ClusterIssuers
+# cluster issuer
 extraObjects:
   - |
     apiVersion: cert-manager.io/v1

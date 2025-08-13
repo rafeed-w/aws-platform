@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Basic Logging Middleware
+// log all requests
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`${timestamp} ${req.method} ${req.url} - ${req.ip}`);
@@ -21,7 +21,6 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/load-test', (req, res) => {
-  // CPU-intensive operation for load testing
   const iterations = parseInt(req.query.iterations) || 1000000;
   let result = 0;
   

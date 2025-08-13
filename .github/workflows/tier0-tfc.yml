@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write  # Required for OIDC JWT authentication
+      id-token: write # Required for OIDC JWT authentication
 
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
@@ -50,13 +50,13 @@ jobs:
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
             secret/data/aws access_key_id | TF_VAR_aws_access_key_id ;
             secret/data/aws secret_access_key | TF_VAR_aws_secret_access_key ;
+            secret/data/aws account_id | TF_VAR_aws_account_id ;
             secret/data/terraform token | TF_VAR_tfc_token ;
             secret/data/platform tfc_organization | TF_VAR_tfc_organization ;
             secret/data/platform github_token | TF_VAR_github_token ;
             secret/data/platform user_email | TF_VAR_user_email ;
             secret/data/platform github_owner | TF_VAR_github_owner ;
             secret/data/platform github_repo | TF_VAR_github_repo ;
-            secret/data/platform aws_account_id | TF_VAR_aws_account_id ;
             secret/data/hcp client_id | TF_VAR_hcp_client_id ;
             secret/data/hcp client_secret | TF_VAR_hcp_client_secret
 
@@ -139,7 +139,7 @@ jobs:
     environment: terraform-apply
     permissions:
       contents: read
-      id-token: write  # Required for OIDC JWT authentication
+      id-token: write # Required for OIDC JWT authentication
 
     steps:
       - name: Checkout
@@ -156,7 +156,7 @@ jobs:
         uses: hashicorp/vault-action@v2
         with:
           url: ${{ secrets.VAULT_URL }}
-          namespace: admin  # Required for HCP Vault
+          namespace: admin # Required for HCP Vault
           method: jwt
           role: github-actions-role
           secrets: |
@@ -170,7 +170,7 @@ jobs:
             secret/data/platform user_email | TF_VAR_user_email ;
             secret/data/platform github_owner | TF_VAR_github_owner ;
             secret/data/platform github_repo | TF_VAR_github_repo ;
-            secret/data/platform aws_account_id | TF_VAR_aws_account_id ;
+            secret/data/aws account_id | TF_VAR_aws_account_id ;
             secret/data/hcp client_id | TF_VAR_hcp_client_id ;
             secret/data/hcp client_secret | TF_VAR_hcp_client_secret
 

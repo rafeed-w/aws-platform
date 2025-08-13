@@ -1,4 +1,4 @@
-# EKS Cluster Outputs
+# eks cluster outputs
 output "eks_cluster_name" {
   description = "Name of the EKS cluster"
   value       = aws_eks_cluster.main.name
@@ -31,7 +31,7 @@ output "eks_cluster_version" {
   value       = aws_eks_cluster.main.version
 }
 
-# EKS Node Group Outputs
+# eks node group outputs
 output "eks_node_group_arn" {
   description = "Amazon Resource Name (ARN) of the EKS Node Group"
   value       = aws_eks_node_group.main.arn
@@ -42,7 +42,7 @@ output "eks_node_group_status" {
   value       = aws_eks_node_group.main.status
 }
 
-# IAM Role Outputs
+# iam role outputs
 output "eks_cluster_role_arn" {
   description = "ARN of the EKS cluster IAM role"
   value       = aws_iam_role.eks_cluster.arn
@@ -53,13 +53,13 @@ output "eks_nodes_role_arn" {
   value       = aws_iam_role.eks_nodes.arn
 }
 
-# Cluster Autoscaler Outputs
+# cluster autoscaler outputs
 output "cluster_autoscaler_role_arn" {
   description = "ARN of the Cluster Autoscaler IAM role"
   value       = aws_iam_role.cluster_autoscaler.arn
 }
 
-# OIDC Provider Outputs
+# oidc provider outputs
 output "oidc_provider_arn" {
   description = "ARN of the OIDC Provider for IRSA"
   value       = aws_iam_openid_connect_provider.eks.arn

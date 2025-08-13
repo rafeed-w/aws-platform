@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
-    # Change to your TFC organization name if different
+    # update org name
     organization = "aws-platform"
 
     workspaces {
@@ -34,7 +34,7 @@ provider "aws" {
   region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
-# Reference tier2 compute resources via remote state
+# tier2 compute remote state
 data "terraform_remote_state" "compute" {
   backend = "remote"
 
@@ -46,7 +46,7 @@ data "terraform_remote_state" "compute" {
   }
 }
 
-# EKS cluster data
+# eks cluster data
 data "aws_eks_cluster" "cluster" {
   name = data.terraform_remote_state.compute.outputs.eks_cluster_name
 }
@@ -74,7 +74,7 @@ locals {
   cluster_name = data.terraform_remote_state.compute.outputs.eks_cluster_name
 }
 
-# CloudWatch Observability Add-on for EKS
+# cloudwatch observability addon
 resource "aws_eks_addon" "cloudwatch_observability" {
   cluster_name                = local.cluster_name
   addon_name                  = "amazon-cloudwatch-observability"
@@ -89,7 +89,7 @@ resource "aws_eks_addon" "cloudwatch_observability" {
   tags = local.common_tags
 }
 
-# IAM Role for CloudWatch Agent (IRSA)
+# cloudwatch agent iam role
 resource "aws_iam_role" "cloudwatch_agent" {
   name = "${local.company}-${local.environment}-cloudwatch-agent-role"
 
@@ -128,19 +128,19 @@ resource "aws_iam_role" "cloudwatch_agent" {
   tags = local.common_tags
 }
 
-# Attach CloudWatch Agent Server Policy
+# cloudwatch agent policy
 resource "aws_iam_role_policy_attachment" "cloudwatch_agent_server_policy" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
   role       = aws_iam_role.cloudwatch_agent.name
 }
 
-# Attach Container Insights Policy  
+# container insights policy
 resource "aws_iam_role_policy_attachment" "cloudwatch_container_insights" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
   role       = aws_iam_role.cloudwatch_agent.name
 }
 
-# CloudWatch Log Groups
+# cloudwatch log groups
 
 resource "aws_cloudwatch_log_group" "fluent_bit" {
   name              = "/aws/containerinsights/${local.cluster_name}/application"
@@ -148,20 +148,20 @@ resource "aws_cloudwatch_log_group" "fluent_bit" {
   tags              = local.common_tags
 }
 
-# SNS Topic for CloudWatch Alarms
+# sns topic for alerts
 resource "aws_sns_topic" "cloudwatch_alerts" {
   name = "${local.company}-${local.environment}-cloudwatch-alerts"
   tags = local.common_tags
 }
 
-# SNS Topic Subscription - email needs to be set manually or via variable
+# email alert subscription
 resource "aws_sns_topic_subscription" "email_alerts" {
   topic_arn = aws_sns_topic.cloudwatch_alerts.arn
   protocol  = "email"
   endpoint  = data.vault_generic_secret.platform_config.data["user_email"]
 }
 
-# CloudWatch Alarms for EKS Cluster
+# cloudwatch alarms
 resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   alarm_name          = "${local.cluster_name}-high-cpu-utilization"
   comparison_operator = "GreaterThanThreshold"
@@ -219,7 +219,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_restart_high" {
   tags = local.common_tags
 }
 
-# Health Check Alarm for webapp
+# webapp health check alarm
 resource "aws_cloudwatch_metric_alarm" "webapp_health_check" {
   alarm_name          = "${local.cluster_name}-webapp-health-check"
   comparison_operator = "LessThanThreshold"
@@ -240,13 +240,13 @@ resource "aws_cloudwatch_metric_alarm" "webapp_health_check" {
   tags = local.common_tags
 }
 
-# CloudWatch Dashboard focused on webapp monitoring
+# cloudwatch dashboard
 resource "aws_cloudwatch_dashboard" "eks_monitoring" {
   dashboard_name = "${local.company}-${local.environment}-eks-monitoring"
 
   dashboard_body = jsonencode({
     widgets = [
-      # Row 1: Webapp Metrics
+      # webapp metrics
       {
         type   = "metric"
         x      = 0
@@ -310,7 +310,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           title  = "Webapp Requests/sec"
         }
       },
-      # Row 2: Webapp Network & Pod Count
+      # network and pod count
       {
         type   = "metric"
         x      = 0
@@ -346,7 +346,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           title  = "Webapp Running Pods"
         }
       },
-      # Row 3: Cluster Overview
+      # cluster overview
       {
         type   = "metric"
         x      = 0
@@ -411,7 +411,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
           }
         }
       },
-      # Row 4: Text Instructions
+      # instructions
       {
         type   = "text"
         x      = 0
@@ -420,7 +420,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         height = 2
 
         properties = {
-          markdown = "**For detailed analysis:** Go to CloudWatch → Container Insights"
+          markdown = "**detailed analysis:** cloudwatch → container insights"
         }
       }
     ]

@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
-    # Change to your TFC organization name if different
+    # update org name
     organization = "aws-platform"
 
     workspaces {
@@ -34,10 +34,10 @@ provider "aws" {
   region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
-# vault provider configured via environment variables from tier0
+# vault provider from env vars
 provider "vault" {}
 
-# read platform config from vault
+# platform config from vault
 data "vault_generic_secret" "platform_config" {
   path = "secret/platform"
 }
@@ -46,7 +46,7 @@ data "vault_generic_secret" "argocd_git" {
   path = "secret/argocd"
 }
 
-# Reference tier2 compute resources via remote state
+# tier2 compute remote state
 data "terraform_remote_state" "compute" {
   backend = "remote"
 
@@ -58,7 +58,7 @@ data "terraform_remote_state" "compute" {
   }
 }
 
-# EKS cluster data for Helm/Kubernetes providers
+# eks cluster data
 data "aws_eks_cluster" "cluster" {
   name = data.terraform_remote_state.compute.outputs.eks_cluster_name
 }
@@ -95,7 +95,7 @@ locals {
 }
 
 
-# Create ArgoCD namespace
+# argocd namespace
 resource "kubernetes_namespace" "argocd" {
   metadata {
     name = "systemtool-argocd"
@@ -105,7 +105,7 @@ resource "kubernetes_namespace" "argocd" {
   }
 }
 
-# Install ArgoCD using Helm with dynamic configuration
+# install argocd with dynamic config
 resource "helm_release" "argocd" {
   name       = "argocd"
   repository = "https://argoproj.github.io/argo-helm"
@@ -118,14 +118,14 @@ resource "helm_release" "argocd" {
     yamlencode({
       configs = {
         cm = {
-          # credential template for private github repos (injected from Vault)
+          # github repo credentials from vault
           "credentialTemplates.github" = yamlencode({
             url = "https://github.com/${data.vault_generic_secret.argocd_git.data["github_owner"]}"
             username = "oauth2"
             password = data.vault_generic_secret.argocd_git.data["github_token"]
           })
 
-          # repositories for git and helm (injected dynamically)
+          # git and helm repositories
           repositories = yamlencode([
             {
               type = "git"
@@ -146,13 +146,13 @@ resource "helm_release" "argocd" {
   depends_on = [kubernetes_namespace.argocd]
 }
 
-# Install root app using Helm with dynamic ECR injection
+# root app with ecr injection
 resource "helm_release" "root_app" {
   name      = "root-app"
   chart     = "./root"
   namespace = "systemtool-argocd"
 
-  # pass ECR repository URL to ArgoCD apps
+  # pass ecr url to apps
   set {
     name  = "global.ecrRepository"
     value = aws_ecr_repository.applications.repository_url
@@ -166,11 +166,11 @@ resource "helm_release" "root_app" {
   depends_on = [helm_release.argocd]
 }
 
-# ECR Repository for application container images and helm charts
+# ecr repository
 resource "aws_ecr_repository" "applications" {
   name                 = "${local.company}-${local.environment}-applications"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true  # Allow deletion even with images
+  force_delete         = true  # allow deletion with images
 
   image_scanning_configuration {
     scan_on_push = true
@@ -181,7 +181,7 @@ resource "aws_ecr_repository" "applications" {
   })
 }
 
-# ECR Lifecycle Policy to manage image retention
+# ecr lifecycle policy
 resource "aws_ecr_lifecycle_policy" "applications" {
   repository = aws_ecr_repository.applications.name
 
@@ -189,7 +189,7 @@ resource "aws_ecr_lifecycle_policy" "applications" {
     rules = [
       {
         rulePriority = 1
-        description  = "Keep last 10 images"
+        description  = "keep last 10 images"
         selection = {
           tagStatus     = "tagged"
           tagPrefixList = ["v"]
@@ -202,7 +202,7 @@ resource "aws_ecr_lifecycle_policy" "applications" {
       },
       {
         rulePriority = 2
-        description  = "Delete untagged images older than 1 day"
+        description  = "delete old untagged images"
         selection = {
           tagStatus   = "untagged"
           countType   = "sinceImagePushed"
@@ -217,7 +217,7 @@ resource "aws_ecr_lifecycle_policy" "applications" {
   })
 }
 
-# Create GitHub OIDC provider
+# github oidc provider
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 
@@ -233,7 +233,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   tags = local.common_tags
 }
 
-# IAM Role for GitHub Actions
+# github actions iam role
 resource "aws_iam_role" "github_actions" {
   name = "${local.company}-${local.environment}-github-actions-role"
 
@@ -261,10 +261,10 @@ resource "aws_iam_role" "github_actions" {
   tags = local.common_tags
 }
 
-# IAM Policy for ECR access
+# ecr access policy
 resource "aws_iam_policy" "github_actions_ecr" {
   name        = "${local.company}-${local.environment}-github-actions-ecr-policy"
-  description = "Policy for GitHub Actions to push to ECR"
+  description = "github actions ecr push policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -309,7 +309,7 @@ resource "aws_iam_policy" "github_actions_ecr" {
   tags = local.common_tags
 }
 
-# Attach ECR policy to GitHub Actions role
+# attach ecr policy
 resource "aws_iam_role_policy_attachment" "github_actions_ecr" {
   policy_arn = aws_iam_policy.github_actions_ecr.arn
   role       = aws_iam_role.github_actions.name

@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
-    # Change to your TFC organization name if different
+    # update org name
     organization = "aws-platform"
 
     workspaces {
@@ -30,8 +30,6 @@ provider "aws" {
   region = data.vault_generic_secret.platform_config.data["aws_region"]
 }
 
-# TODO: Add later - ECR repository, S3 bucket, VPC Flow Logs 
-# (These will be added in observability tier)
 
 locals {
   environment = "test"
@@ -44,7 +42,7 @@ locals {
   }
 }
 
-# VPC
+# main vpc
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -55,7 +53,7 @@ resource "aws_vpc" "main" {
   })
 }
 
-# Public Subnets (for Load Balancers)
+# public subnets for load balancers
 resource "aws_subnet" "public_1a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
@@ -80,7 +78,7 @@ resource "aws_subnet" "public_1b" {
   })
 }
 
-# Private Subnets (for EKS Nodes)
+# private subnets for eks nodes
 resource "aws_subnet" "private_1a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.10.0/24"
@@ -103,7 +101,7 @@ resource "aws_subnet" "private_1b" {
   })
 }
 
-# Security Group for EKS Cluster Control Plane
+# eks cluster security group
 resource "aws_security_group" "eks_cluster" {
   name_prefix = "${local.company}-${local.environment}-eks-cluster"
   vpc_id      = aws_vpc.main.id
@@ -113,7 +111,7 @@ resource "aws_security_group" "eks_cluster" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "All outbound traffic"
+    description = "all outbound"
   }
 
   tags = merge(local.common_tags, {
@@ -121,7 +119,7 @@ resource "aws_security_group" "eks_cluster" {
   })
 }
 
-# Security Group for EKS Worker Nodes
+# eks worker nodes security group
 resource "aws_security_group" "eks_nodes" {
   name_prefix = "${local.company}-${local.environment}-eks-nodes"
   vpc_id      = aws_vpc.main.id
@@ -131,7 +129,7 @@ resource "aws_security_group" "eks_nodes" {
     to_port     = 0
     protocol    = "-1"
     self        = true
-    description = "Node to node communication"
+    description = "node to node"
   }
 
   egress {
@@ -139,7 +137,7 @@ resource "aws_security_group" "eks_nodes" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "All outbound traffic"
+    description = "all outbound"
   }
 
   tags = merge(local.common_tags, {
@@ -147,7 +145,7 @@ resource "aws_security_group" "eks_nodes" {
   })
 }
 
-# Security Group Rules (separate resources to avoid circular dependency)
+# security group rules
 resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
   type                     = "ingress"
   from_port                = 443
@@ -155,7 +153,7 @@ resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.eks_nodes.id
   security_group_id        = aws_security_group.eks_cluster.id
-  description              = "HTTPS from worker nodes"
+  description              = "https from nodes"
 }
 
 resource "aws_security_group_rule" "nodes_ingress_from_cluster" {
@@ -165,10 +163,10 @@ resource "aws_security_group_rule" "nodes_ingress_from_cluster" {
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.eks_cluster.id
   security_group_id        = aws_security_group.eks_nodes.id
-  description              = "Control plane to nodes"
+  description              = "control plane to nodes"
 }
 
-# Internet Gateway
+# internet gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -177,7 +175,7 @@ resource "aws_internet_gateway" "main" {
   })
 }
 
-# Elastic IP for NAT Gateway
+# elastic ip for nat
 resource "aws_eip" "nat" {
   domain = "vpc"
   depends_on = [aws_internet_gateway.main]
@@ -187,7 +185,7 @@ resource "aws_eip" "nat" {
   })
 }
 
-# NAT Gateway (in public subnet for private subnet internet access)
+# nat gateway
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public_1a.id
@@ -198,7 +196,7 @@ resource "aws_nat_gateway" "main" {
   })
 }
 
-# Route Table for Public Subnets
+# public route table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -212,7 +210,7 @@ resource "aws_route_table" "public" {
   })
 }
 
-# Route Table for Private Subnets
+# private route table
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -226,7 +224,7 @@ resource "aws_route_table" "private" {
   })
 }
 
-# Route Table Associations - Public Subnets
+# public subnet associations
 resource "aws_route_table_association" "public_1a" {
   subnet_id      = aws_subnet.public_1a.id
   route_table_id = aws_route_table.public.id
@@ -237,7 +235,7 @@ resource "aws_route_table_association" "public_1b" {
   route_table_id = aws_route_table.public.id
 }
 
-# Route Table Associations - Private Subnets
+# private subnet associations
 resource "aws_route_table_association" "private_1a" {
   subnet_id      = aws_subnet.private_1a.id
   route_table_id = aws_route_table.private.id

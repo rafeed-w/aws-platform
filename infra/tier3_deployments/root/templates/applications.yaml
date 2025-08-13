@@ -1,3 +1,4 @@
+# argocd app definitions
 {{- range .Values.applications }}
 ---
 apiVersion: argoproj.io/v1alpha1

@@ -1,8 +1,6 @@
 # AWS Platform
 
-## Architecture Overview
-
-This platform implements a multi-tier infrastructure approach with complete automation, secrets management, and monitoring capabilities.
+[TODO: Architecture Diagram Space]
 
 ## Quick Start
 
@@ -11,8 +9,9 @@ This platform implements a multi-tier infrastructure approach with complete auto
 - Terraform >= 1.12
 - Git
 
-Optional tools:
+Optional cli tools:
 
+- aws
 - kubectl
 - helm
 - hcp
@@ -26,12 +25,15 @@ Create these accounts if you don't have them:
 2. **Terraform Cloud**: [app.terraform.io](https://app.terraform.io/signup/account) (can use GitHub Auth)
    - **Important**: Use organization name `aws-platform` or you'll need to update all terraform cloud blocks in tier files
 3. **HashiCorp Cloud Platform**: [portal.cloud.hashicorp.com](https://portal.cloud.hashicorp.com/sign-up) (can use GitHub Auth)
-4. **GitHub Repository**: Fork or create repository for this code
+4. **GitHub Repository**: Fork this repository to your own GitHub account
 
-### Step 2: Clone Repository
+### Step 2: Fork and Clone Repository
+
+1. **Fork the repository**: Go to [github.com/rafeed-w/aws-platform](https://github.com/rafeed-w/aws-platform) and click "Fork" to create your own copy
+2. **Clone your fork**:
 
 ```bash
-git clone https://github.com/your-username/aws-platform.git
+git clone https://github.com/YOUR_USERNAME/aws-platform.git
 cd aws-platform
 ```
 
@@ -81,7 +83,7 @@ export TF_VAR_aws_access_key_id="AKIA..."                 # AWS access key from 
 export TF_VAR_aws_secret_access_key="your_secret_key"     # AWS secret key from Step 3
 export TF_VAR_aws_account_id="123456789012"               # Your 12-digit AWS account ID
 export TF_VAR_tfc_token="your_terraform_cloud_token"      # From terraform login in Step 3
-export TF_VAR_tfc_organization="your_tfc_org_name"        # Your TFC organization name
+export TF_VAR_tfc_organization="aws-platform"             # Your TFC organization name (keep "aws-platform" for minimal changes)
 export TF_VAR_hcp_client_id="your_hcp_client_id"          # HCP client ID from Step 3
 export TF_VAR_hcp_client_secret="your_hcp_client_secret"  # HCP client secret from Step 3
 export TF_VAR_github_token="your_github_token"            # GitHub PAT from Step 3
@@ -97,7 +99,7 @@ $env:TF_VAR_aws_access_key_id="AKIA..."                    # AWS access key from
 $env:TF_VAR_aws_secret_access_key="your_secret_key"       # AWS secret key from Step 3
 $env:TF_VAR_aws_account_id="123456789012"                 # Your 12-digit AWS account ID
 $env:TF_VAR_tfc_token="your_terraform_cloud_token"        # From terraform login in Step 3
-$env:TF_VAR_tfc_organization="your_tfc_org_name"          # Your TFC organization name
+$env:TF_VAR_tfc_organization="aws-platform"               # Your TFC organization name (keep "aws-platform" for minimal changes)
 $env:TF_VAR_hcp_client_id="your_hcp_client_id"            # HCP client ID from Step 3
 $env:TF_VAR_hcp_client_secret="your_hcp_client_secret"    # HCP client secret from Step 3
 $env:TF_VAR_github_token="your_github_token"              # GitHub PAT from Step 3
@@ -133,6 +135,8 @@ After successful Tier 0 deployment, trigger the complete infrastructure deployme
 3. Select "Apply All Tiers" workflow
 4. Click "Run workflow"
 
+**Expected Duration: 20-25 minutes**
+
 This automated process will:
 
 - Deploy network infrastructure (Tier 1)
@@ -143,7 +147,9 @@ This automated process will:
 
 ### Step 5: Verify Deployment
 
-Monitor the workflow execution and wait for completion (approximately 15-20 minutes). Upon successful deployment, you will receive:
+Monitor the workflow execution and wait for completion (20-25 minutes).
+
+**Important: All deployment URLs will be posted as a GitHub step summary in the "Apply All Tiers" workflow run. Check the workflow summary for:**
 
 - **ArgoCD URL**: GitOps deployment dashboard
 - **Web Application URL**: Live application endpoint
@@ -158,7 +164,62 @@ Monitor the workflow execution and wait for completion (approximately 15-20 minu
 - **Tier 3**: Application deployments (ArgoCD, Helm charts, CI/CD)
 - **Tier 4**: Monitoring and observability (CloudWatch, Container Insights)
 
-[Architecture Diagram Space]
+## Decisions and Tradeoffs
+
+This platform prioritizes ease of setup and demonstration value over production-ready practices. Several best practices were intentionally sacrificed for simplicity.
+
+**Setup and Configuration:**
+
+- Apply-all and destroy-all workflows created for convenience, but production environments would require more granular deployment controls and approval processes
+- All secrets initially stored in single .env file before vault migration, production would use separate credential management systems from start
+- Manual secret population in vault rather than automated secret rotation and management
+- Hardcoded values in outputs and configurations to avoid complexity
+
+**Infrastructure as Code:**
+
+- Used Terraform's kubernetes and helm providers for simplicity, production would avoid these due to state drift issues and maintenance complexity
+- Single vault instance without high availability or backup strategies
+- Basic workspace setup rather than advanced Terraform Cloud features like policy enforcement
+
+**Application Deployment:**
+
+- Simple ArgoCD setup instead of app-of-apps pattern, production would use app-of-apps for automatic multi-environment deployments
+- ArgoCD chosen for GitOps philosophy alignment with IaC principles, eliminating complex CI/CD orchestration
+- Container tags use "latest" throughout, production requires semantic versioning and immutable tags
+- Single environment deployment, production would require multi-environment promotion workflows
+
+**Monitoring and Observability:**
+
+- CloudWatch-only monitoring instead of comprehensive observability stack, production would benefit from Prometheus and Grafana for detailed application metrics and custom dashboards
+- Basic health checks rather than more dedicated tools for request tracing across services
+- No application performance monitoring, production could use tools like AWS Application Insights or others
+
+**Security and Network Policy:**
+
+- Basic security groups without Kubernetes network policies, production clusters should implement pod-to-pod communication restrictions
+- Single cluster setup without service mesh, production would consider Istio for advanced traffic management and mTLS
+- No Pod Security Standards enforcement, production clusters should implement restricted pod security policies
+
+**Data Management and Resilience:**
+
+- No backup strategies for persistent volumes or cluster state
+- Single region deployment without disaster recovery, production systems would implement cross-region replication and failover capabilities
+- No persistent storage examples, production applications often require StatefulSets with proper PVC management for databases and file storage
+
+**Advanced Platform Features:**
+
+- Basic ECR without multi-region replication, production would replicate container images across regions for availability
+- No cost optimization automation, production platforms would include AWS Cost Explorer APIs, resource rightsizing, and spot instance automation
+- Manual blue-green switching rather than automated canary deployments with metrics-based rollback
+
+**Operations:**
+
+- Shared admin credentials instead of proper RBAC and individual user management
+- Public endpoints enabled for services that should be private in production
+- Free-tier resource constraints rather than production-sized infrastructure
+- Simplified monitoring without proper alerting escalation procedures
+
+These tradeoffs enable rapid deployment and learning while maintaining architectural patterns suitable for production scaling.
 
 ### Key Components
 
@@ -171,34 +232,19 @@ Monitor the workflow execution and wait for completion (approximately 15-20 minu
 - **Load Balancing**: NGINX Ingress Controller with cert-manager
 - **Application**: Node.js web application with health checks
 
-### Terraform Workspaces
+### Developer Workflows
 
-Each tier is managed in separate Terraform Cloud workspaces:
+**Infrastructure Changes:**
 
-- `tier1_network`: VPC and networking components
-- `tier2_compute`: EKS cluster and compute resources
-- `tier3_deployments`: ArgoCD and application manifests
-- `tier4_monitoring`: CloudWatch and observability setup
+- Developer modifies tier1_network/tier1_network.tf -> creates PR -> GitHub Actions runs terraform plan -> posts plan results as PR comment -> team reviews -> PR merged to main -> terraform apply workflow triggers -> requires manual approval through GitHub environment protection -> infrastructure updated
 
-### GitHub Actions Workflows
+**Application Updates:**
 
-Individual workflows for each tier provide granular control:
+- Developer modifies app/app.js -> creates PR -> webapp build workflow runs Docker build for validation without push -> PR merged to main -> build workflow creates new semantic version tag -> builds and pushes to ECR with version tag and latest tag -> ArgoCD detects new image in ECR -> automatically syncs deployment based on configured image tags in values.yaml
 
-- `tier1-network.yml`: Network infrastructure changes
-- `tier2-compute.yml`: EKS cluster modifications
-- `tier3-deployments.yml`: Application deployment updates
-- `tier4-monitoring.yml`: Monitoring configuration changes
-- `webapp-build-push.yml`: Application container builds
-- `apply-all.yml`: Complete infrastructure deployment
-- `destroy-all.yml`: Full environment teardown
+**Blue-Green Deployment Control:**
 
-### ArgoCD Applications
-
-GitOps-managed applications include:
-
-- **thrive-webapp**: Main Node.js application with blue-green deployment
-- **nginx**: Ingress controller for traffic routing
-- **cert-manager**: TLS certificate management
+- Developer wants to promote green to production -> modifies infra/tier3_deployments/webapp/values.yaml -> changes activeVersion from blue to green -> creates PR -> ArgoCD plan shows traffic will switch -> PR approved and merged -> ArgoCD syncs new configuration -> load balancer switches traffic from blue to green environment
 
 ## Monitoring and Observability
 
@@ -300,6 +346,8 @@ Trigger load testing using the GitHub Actions workflow:
 ### Resource Cleanup
 
 To avoid charges, destroy infrastructure when not needed:
+
+**Expected Duration: 20-25 minutes**
 
 ```bash
 # Via GitHub Actions

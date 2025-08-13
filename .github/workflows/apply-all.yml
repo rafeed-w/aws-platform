@@ -15,6 +15,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Infrastructure Overview
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # AWS Platform Infrastructure Deployment
+          
+          This workflow will deploy a complete, scalable AWS platform infrastructure across multiple tiers. All relevant details will be updated below as each tier completes.
+          
+          ## Deployment Plan
+          
+          ### Infrastructure Tiers
+          - **Tier 0**: Terraform Cloud configuration (prerequisite)
+          - **Tier 1**: Network infrastructure (VPC, subnets, security groups)
+          - **Tier 2**: Compute resources (EKS cluster, node groups)
+          - **Tier 3**: Application deployments (ArgoCD, webapp manifests)
+          - **Tier 4**: Monitoring and observability (CloudWatch dashboards, alerts)
+          
+          ### Expected Timeline
+          - Total deployment time: ~20-25 minutes
+          - Tier 2 (EKS cluster) may take longer (~8-10 minutes)
+          
+          ### What to Expect
+          - Real-time progress updates will appear below
+          - Access URLs and credentials will be provided after each tier
+          - Final summary with all links will be available at completion
+          
+          ---
+          
+          ## Live Progress Updates
+          EOF
+
       - name: Import Secrets from Vault
         uses: hashicorp/vault-action@v2
         with:
@@ -45,10 +75,10 @@ jobs:
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## Infrastructure Progress
-          
+
           ### Completed Tiers
           - ✅ **Tier1**: Network (VPC, subnets, security groups)
-          
+
           ### Next Steps
           - Applying Tier2: Compute (EKS cluster, node groups)
           EOF
@@ -95,17 +125,17 @@ jobs:
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## Infrastructure Progress
-          
+
           ### Completed Tiers
           - ✅ **Tier1**: Network (VPC, subnets, security groups)
           - ✅ **Tier2**: Compute (EKS cluster, node groups)
-          
+
           ### EKS Cluster Access
           Configure kubectl to access the cluster:
           \`\`\`bash
-          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
+          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks
           \`\`\`
-          
+
           ### Next Steps
           - Applying Tier3: Deployments (ArgoCD, webapp manifests)
           EOF
@@ -133,7 +163,11 @@ jobs:
           secrets: |
             secret/data/terraform token | TF_API_TOKEN ;
             secret/data/terraform organization | TF_CLOUD_ORGANIZATION ;
-            secret/data/platform github_token | GITHUB_PAT
+            secret/data/platform github_token | GITHUB_PAT ;
+            secret/data/aws account_id | AWS_ACCOUNT_ID ;
+            secret/data/platform aws_region | AWS_REGION ;
+            secret/data/platform github_owner | GITHUB_OWNER ;
+            secret/data/platform github_repo | GITHUB_REPO
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -164,30 +198,25 @@ jobs:
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## Infrastructure Progress
-          
+
           ### Completed Tiers
           - ✅ **Tier1**: Network (VPC, subnets, security groups)
           - ✅ **Tier2**: Compute (EKS cluster, node groups)
           - ✅ **Tier3**: Deployments (ArgoCD, webapp manifests)
-          
+
           ### Important Links
           | Service | URL | Description |
           |---------|-----|-------------|
           | ArgoCD | [${{ steps.argocd_url.outputs.argocd_url }}](${{ steps.argocd_url.outputs.argocd_url }}) | GitOps deployment UI |
-          | ECR Repository | [${{ steps.argocd_url.outputs.ecr_url }}](${{ steps.argocd_url.outputs.ecr_url }}) | Container registry |
-          
+          | ECR Repository | [AWS Console](https://${{ env.AWS_REGION }}.console.aws.amazon.com/ecr/repositories/private/${{ env.AWS_ACCOUNT_ID }}/thrive-test-applications?region=${{ env.AWS_REGION }}) | Container registry |
+
           ### Default Credentials
           - ArgoCD: Username: admin / Password: admin
-          
-          ### EKS Cluster Access
-          Configure kubectl to access the cluster:
-          \`\`\`bash
-          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
-          \`\`\`
-          
+
           ### Next Steps
-          1. **Trigger WebApp Build**: [Build and Push WebApp to ECR](../actions/workflows/webapp-build-push.yml) workflow
+          1. **Trigger WebApp Build**: [Build and Push WebApp to ECR](https://github.com/${{ env.GITHUB_OWNER }}/${{ env.GITHUB_REPO }}/actions/workflows/webapp-build-push.yml) workflow
           2. Wait 2-3 minutes for LoadBalancer to be fully ready
+              - If the ArgoCD webapp is in a degraded state, it is likely that the image version is not yet available in ECR. The WebApp Build workflow has a dropdown to trigger major, minor, or patch versions
           3. Check ArgoCD login and verify apps are syncing
           4. Applying Tier4: Monitoring (CloudWatch dashboards, alerts)
           EOF
@@ -254,17 +283,10 @@ jobs:
           | CloudWatch Dashboard | [Custom Dashboard]($DASHBOARD_URL) | Application metrics |
           | Container Insights | [EKS Monitoring]($CONTAINER_INSIGHTS_URL) | Detailed container metrics |
 
-          ### EKS Cluster Access
-          Configure kubectl to access the cluster:
-          \`\`\`bash
-          aws eks update-kubeconfig --region us-east-2 --name thrive-test-eks-cluster
-          \`\`\`
 
           ### Next Steps
-          1. Trigger WebApp Build workflow to deploy application
-          2. Wait 2-3 minutes for LoadBalancer to be fully ready
-          3. Access monitoring dashboards to verify metrics collection
-          4. Configure email notifications in SNS console
+          1. Ensure WebApp Build workflow was triggered
+          2. Access monitoring dashboards to verify metrics collection
 
           ### Additional Information
           - Detailed terraform outputs available in workflow step logs above

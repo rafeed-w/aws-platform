@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
-    # Change to your TFC organization name if different
+    # update org name
     organization = "aws-platform"
 
     workspaces {
@@ -60,7 +60,7 @@ provider "kubernetes" {
   }
 }
 
-# Reference tier1 network resources via remote state
+# tier1 network remote state
 data "terraform_remote_state" "network" {
   backend = "remote"
 
@@ -83,7 +83,7 @@ locals {
   }
 }
 
-# IAM Role for EKS Cluster
+# eks cluster iam role
 resource "aws_iam_role" "eks_cluster" {
   name = "${local.company}-${local.environment}-eks-cluster-role"
 
@@ -106,7 +106,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   role       = aws_iam_role.eks_cluster.name
 }
 
-# IAM Role for EKS Node Group
+# eks node group iam role
 resource "aws_iam_role" "eks_nodes" {
   name = "${local.company}-${local.environment}-eks-nodes-role"
 
@@ -139,7 +139,7 @@ resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
   role       = aws_iam_role.eks_nodes.name
 }
 
-# EKS Cluster
+# eks cluster
 resource "aws_eks_cluster" "main" {
   name     = "${local.company}-${local.environment}-eks"
   role_arn = aws_iam_role.eks_cluster.arn
@@ -169,7 +169,7 @@ resource "aws_eks_cluster" "main" {
   })
 }
 
-# EKS Node Group
+# eks node group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${local.company}-${local.environment}-eks-nodes"
@@ -193,8 +193,7 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
-  # Ensure that IAM Role permissions are created before and deleted after EKS Node Group handling.
-  # Otherwise, EKS will not be able to properly delete EC2 Instances and Elastic Network Interfaces.
+  # iam permissions required for proper cleanup
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,
     aws_iam_role_policy_attachment.eks_cni_policy,
@@ -203,21 +202,21 @@ resource "aws_eks_node_group" "main" {
 
   tags = merge(local.common_tags, {
     Name = "${local.company}-${local.environment}-eks-nodes"
-    # Tags required for Cluster Autoscaler
+    # cluster autoscaler tags
     "k8s.io/cluster-autoscaler/enabled"                                   = "true"
     "k8s.io/cluster-autoscaler/${local.company}-${local.environment}-eks" = "owned"
   })
 }
 
-# Get current AWS account ID for IRSA
+# current aws account id
 data "aws_caller_identity" "current" {}
 
-# Get TLS certificate for EKS OIDC
+# eks oidc tls cert
 data "tls_certificate" "eks" {
   url = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
 
-# Create OIDC Identity Provider for IRSA
+# oidc identity provider
 resource "aws_iam_openid_connect_provider" "eks" {
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
@@ -228,7 +227,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
   })
 }
 
-# IAM Role for Cluster Autoscaler (IRSA)
+# cluster autoscaler iam role
 resource "aws_iam_role" "cluster_autoscaler" {
   name = "${local.company}-${local.environment}-cluster-autoscaler-role"
 
@@ -252,10 +251,10 @@ resource "aws_iam_role" "cluster_autoscaler" {
   tags = local.common_tags
 }
 
-# IAM Policy for Cluster Autoscaler
+# cluster autoscaler policy
 resource "aws_iam_policy" "cluster_autoscaler" {
   name        = "${local.company}-${local.environment}-cluster-autoscaler-policy"
-  description = "Policy for EKS cluster autoscaler"
+  description = "eks cluster autoscaler policy"
 
   policy = jsonencode({
     Statement = [
@@ -284,7 +283,7 @@ resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
   role       = aws_iam_role.cluster_autoscaler.name
 }
 
-# Namespace for cluster autoscaler
+# cluster autoscaler namespace
 resource "kubernetes_namespace" "cluster_autoscaler" {
   metadata {
     name = "systemtool-cluster-autoscaler"
@@ -296,7 +295,7 @@ resource "kubernetes_namespace" "cluster_autoscaler" {
   depends_on = [aws_eks_node_group.main]
 }
 
-# Install Cluster Autoscaler using Helm
+# install cluster autoscaler
 resource "helm_release" "cluster_autoscaler" {
   name       = "cluster-autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"

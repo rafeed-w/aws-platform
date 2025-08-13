@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.12"
 
   cloud {
-    organization = "aws-platform" # Change to your TFC organization name
+    organization = "aws-platform" # update org name
 
     workspaces {
       name = "tier0_tfc"
@@ -42,43 +42,43 @@ provider "github" {
   token = var.github_token
 }
 
-# HCP Vault Cluster (Free Tier)
+# hcp vault cluster
 resource "hcp_hvn" "main" {
-  hvn_id         = "aws-platform-hvn"
+  hvn_id         = "${var.tfc_organization}-hvn"
   cloud_provider = "aws"
   region         = var.aws_region
   cidr_block     = "172.25.16.0/20"
 }
 
 resource "hcp_vault_cluster" "main" {
-  cluster_id      = "aws-platform-vault"
+  cluster_id      = "${var.tfc_organization}-vault"
   hvn_id          = hcp_hvn.main.hvn_id
-  tier            = "dev" # Free tier
+  tier            = "dev" # free tier
   public_endpoint = true
 }
 
-# Create admin token for Vault cluster
+# vault admin token
 resource "hcp_vault_cluster_admin_token" "main" {
   cluster_id = hcp_vault_cluster.main.cluster_id
 }
 
-# Configure Vault provider using HCP cluster
+# configure vault provider
 provider "vault" {
   address = hcp_vault_cluster.main.vault_public_endpoint_url
   token   = hcp_vault_cluster_admin_token.main.token
 }
 
-# Vault KV engine
+# kv secrets engine
 resource "vault_mount" "kv" {
   path        = "secret"
   type        = "kv"
   options     = { version = "2" }
-  description = "Platform secrets"
+  description = "platform secrets"
 
   depends_on = [hcp_vault_cluster.main]
 }
 
-# Store all platform secrets in Vault
+# platform secrets in vault
 resource "vault_generic_secret" "aws_credentials" {
   path = "secret/aws"
 
@@ -129,7 +129,7 @@ resource "vault_generic_secret" "hcp_credentials" {
   depends_on = [vault_mount.kv]
 }
 
-# Configure JWT auth method for GitHub Actions OIDC
+# github actions jwt auth
 resource "vault_jwt_auth_backend" "github_actions" {
   path        = "jwt"
   description = "GitHub Actions JWT authentication"
@@ -140,7 +140,7 @@ resource "vault_jwt_auth_backend" "github_actions" {
   depends_on = [hcp_vault_cluster.main]
 }
 
-# Create role for GitHub Actions
+# github actions role
 resource "vault_jwt_auth_backend_role" "github_actions_role" {
   backend   = vault_jwt_auth_backend.github_actions.path
   role_name = "github-actions-role"
@@ -158,7 +158,7 @@ resource "vault_jwt_auth_backend_role" "github_actions_role" {
   token_max_ttl = 3600
 }
 
-# Policy for GitHub Actions to access secrets
+# github actions secrets policy
 resource "vault_policy" "github_actions" {
   name = "github-actions-policy"
 
@@ -169,7 +169,7 @@ path "secret/*" {
 EOT
 }
 
-# Create GitHub Environments
+# github environments
 resource "github_repository_environment" "terraform_plan" {
   environment = "terraform-plan"
   repository  = var.github_repo
@@ -188,7 +188,7 @@ data "github_user" "current" {
   username = var.github_owner
 }
 
-# Add Vault secrets as repository secrets (simpler than environment secrets)
+# vault secrets as repo secrets
 resource "github_actions_secret" "vault_url" {
   repository      = var.github_repo
   secret_name     = "VAULT_URL"
@@ -201,7 +201,7 @@ resource "github_actions_secret" "vault_token" {
   plaintext_value = hcp_vault_cluster_admin_token.main.token
 }
 
-# Store GitHub token for ArgoCD (private repos)
+# argocd github access
 resource "vault_generic_secret" "argocd_git" {
   path = "secret/argocd"
 
@@ -214,7 +214,7 @@ resource "vault_generic_secret" "argocd_git" {
   depends_on = [vault_mount.kv]
 }
 
-# Existing TFC workspace creation (enhanced)
+# tfc workspaces
 data "tfe_organization" "org" {
   name = var.tfc_organization
 }
@@ -243,7 +243,7 @@ resource "tfe_variable" "vault_token" {
   sensitive       = true
 }
 
-# Add AWS credentials as environment variables (global to all workspaces)
+# aws credentials for all workspaces
 resource "tfe_variable" "aws_access_key_id" {
   key             = "AWS_ACCESS_KEY_ID"
   value           = var.aws_access_key_id
@@ -270,7 +270,7 @@ resource "tfe_variable" "aws_region" {
   variable_set_id = tfe_variable_set.vault_credentials.id
 }
 
-# Create workspaces with Vault integration
+# create workspaces
 resource "tfe_workspace" "workspaces" {
   for_each     = { for ws in var.workspaces : ws.name => ws }
   name         = each.value.name
